@@ -56,13 +56,18 @@ mkdir -p "$WORK/$NAME/app"
 cp -R "$BOOT/." "$WORK/$NAME/"
 # Fonts the app fetches on demand from ./fonts/ (craft-fonts builds only).
 if [[ -d "$APP/fonts" ]]; then cp -R "$APP/fonts" "$WORK/$NAME/"; fi
-# The boot module imports the app's glue by this name (it can't know Trunk's content hash).
+# The app's glue by its content hash, named in parts.txt (`loader …`): a fixed name could come
+# from the browser's cache, or stay behind on the server, and an old glue can't start a new wasm.
+# The fixed name stays too, for a page from before (its boot module imports that).
+GLUE_NAME="ai-figma-${STEM#figcraft-web-}.js"
+cp "$GLUE" "$WORK/$NAME/app/$GLUE_NAME"
 cp "$GLUE" "$WORK/$NAME/app/ai-figma.js"
 # The parts keep the content hash, so they can be cached forever. Their extension is one no server
 # knows: a server that recognised gzip might decode or label it, and the page inflates the parts.
 gzip -9 -n -c "$WASM" | (cd "$WORK/$NAME/app" && split -b "$PART_BYTES" - "$PART_STEM.part-")
 {
   echo "ai-figma-parts 1"
+  echo "loader $GLUE_NAME"
   for part in "$WORK/$NAME/app/$PART_STEM".part-*; do basename "$part"; done
 } >"$WORK/$NAME/app/parts.txt"
 size() { wc -c <"$1" | tr -d ' '; }
@@ -71,7 +76,7 @@ gzip_bytes=$(cat "$WORK/$NAME/app/$PART_STEM".part-* | wc -c | tr -d ' ')
 # The page shows download progress against this total (studio/loader.js).
 sed -i.bak "s/data-app-bytes=\"0\"/data-app-bytes=\"$gzip_bytes\"/" "$WORK/$NAME/index.html" && rm -f "$WORK/$NAME/index.html.bak"
 grep -q "data-app-bytes=\"$gzip_bytes\"" "$WORK/$NAME/index.html" || { echo "error: the page does not know the download size" >&2; exit 1; }
-part_count=$(($(wc -l <"$WORK/$NAME/app/parts.txt") - 1))
+part_count=$(($(wc -l <"$WORK/$NAME/app/parts.txt") - 2))
 echo "$(basename "$WASM"): $wasm_bytes bytes, shipped as $gzip_bytes bytes of gzip in $part_count part(s) of up to $PART_BYTES"
 # Sample server config (MIME types); harmless where unused.
 cp "$HERE/.htaccess" "$WORK/$NAME/" 2>/dev/null || true
