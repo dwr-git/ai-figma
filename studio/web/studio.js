@@ -22,6 +22,11 @@
     openOnStart: false,
     filesOnStart: true,
   }, window.STUDIO_CONFIG || {});
+  // Страница сборки лежит в b/<номер>/ (studio/build/versioned.sh); адреса из настроек — от папки приложения.
+  const fromRoot = (p) => { try { return new URL(p, window.STUDIO_ROOT || document.baseURI).href; } catch { return p; } };
+  CFG.api = fromRoot(CFG.api);
+  CFG.files = fromRoot(CFG.files);
+  CFG.homeUrl = fromRoot(CFG.homeUrl || '../');
 
   const isDarkTheme = (id) => id === 'dark' || id === 'brand';
   const READ_TOOLS = new Set(['find_commands', 'get_state', 'inspect_layer', 'look_at_screen', 'list_templates']);
