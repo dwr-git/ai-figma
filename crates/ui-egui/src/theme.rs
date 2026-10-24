@@ -82,6 +82,104 @@ pub fn under_white(c: Color32) -> Color32 {
     if c == BRAND { ACCENT } else { c }
 }
 
+/// The colour the Brand backdrop reads as, for the canvas overlays' contrast ([`set_canvas_page`]).
+pub const BRAND_CANVAS: Color32 = Color32::from_rgb(0x16, 0x18, 0x2C);
+
+/// The Brand theme's canvas backdrop, as the owner's page draws it in CSS: the brand gradient
+/// (#0a0a0f → #1a1a2e → #16213e at 135°), three soft glows (circles at 20% 80%, 80% 20% and 40% 40%,
+/// fading out halfway to the farthest corner), a 30 px grid of 5% white lines, and an inner shadow
+/// (`inset 0 0 35px 10px #00000099`) round the edges.
+pub fn paint_brand_backdrop(painter: &egui::Painter, rect: egui::Rect) {
+    use egui::epaint::{Mesh, Vertex, WHITE_UV};
+    let vertex = |pos: egui::Pos2, color: Color32| Vertex { pos, uv: WHITE_UV, color };
+    let quad = |m: &mut Mesh, corners: [(egui::Pos2, Color32); 4]| {
+        let base = m.vertices.len() as u32;
+        m.vertices.extend(corners.iter().map(|(p, c)| vertex(*p, *c)));
+        m.indices.extend([base, base + 1, base + 2, base, base + 2, base + 3]);
+    };
+    // The gradient: at 135° the top-left corner is the first stop, the bottom-right the last, and
+    // the other two corners sit on the middle stop.
+    let (a, mid, b) = (Color32::from_rgb(0x0A, 0x0A, 0x0F), Color32::from_rgb(0x1A, 0x1A, 0x2E), Color32::from_rgb(0x16, 0x21, 0x3E));
+    let mut m = Mesh::default();
+    quad(&mut m, [(rect.left_top(), a), (rect.right_top(), mid), (rect.right_bottom(), b), (rect.left_bottom(), mid)]);
+    painter.add(egui::Shape::mesh(m));
+    // The glows: a fan from the centre colour out to transparent at half the farthest-corner distance.
+    for (fx, fy, rgb, alpha) in [(0.2_f32, 0.8_f32, (120, 119, 198), 0.30_f32), (0.8, 0.2, (255, 119, 198), 0.30), (0.4, 0.4, (120, 219, 255), 0.20)]
+    {
+        let c = rect.min + egui::vec2(rect.width() * fx, rect.height() * fy);
+        let far = egui::vec2(rect.width() * fx.max(1.0 - fx), rect.height() * fy.max(1.0 - fy)).length();
+        let reach = far * 0.5;
+        let inner = Color32::from_rgba_unmultiplied(rgb.0, rgb.1, rgb.2, (alpha * 255.0) as u8);
+        let mut g = Mesh::default();
+        g.vertices.push(vertex(c, inner));
+        const STEPS: u32 = 64;
+        for i in 0..=STEPS {
+            let angle = std::f32::consts::TAU * i as f32 / STEPS as f32;
+            g.vertices.push(vertex(c + egui::vec2(angle.cos(), angle.sin()) * reach, Color32::TRANSPARENT));
+        }
+        for i in 1..=STEPS {
+            g.indices.extend([0, i, i + 1]);
+        }
+        painter.add(egui::Shape::mesh(g));
+    }
+    // The grid: lines 30 points apart from the top-left corner.
+    let line = Stroke::new(1.0, Color32::from_rgba_unmultiplied(255, 255, 255, 13));
+    let mut x = rect.left() + 0.5;
+    while x < rect.right() {
+        painter.vline(x, rect.y_range(), line);
+        x += 30.0;
+    }
+    let mut y = rect.top() + 0.5;
+    while y < rect.bottom() {
+        painter.hline(rect.x_range(), y, line);
+        y += 30.0;
+    }
+    // The inner shadow: solid for the 10 px spread, then fading over the 35 px blur.
+    let dark = |a: f32| Color32::from_rgba_unmultiplied(0, 0, 0, (a * 153.0) as u8);
+    let mut sh = Mesh::default();
+    for (from, to, a0, a1) in [(0.0_f32, 10.0_f32, 1.0_f32, 0.75_f32), (10.0, 45.0, 0.75, 0.0)] {
+        let (r, i0, i1) = (rect, from, to);
+        // top, bottom, left, right bands
+        quad(
+            &mut sh,
+            [
+                (egui::pos2(r.left(), r.top() + i0), dark(a0)),
+                (egui::pos2(r.right(), r.top() + i0), dark(a0)),
+                (egui::pos2(r.right(), r.top() + i1), dark(a1)),
+                (egui::pos2(r.left(), r.top() + i1), dark(a1)),
+            ],
+        );
+        quad(
+            &mut sh,
+            [
+                (egui::pos2(r.left(), r.bottom() - i1), dark(a1)),
+                (egui::pos2(r.right(), r.bottom() - i1), dark(a1)),
+                (egui::pos2(r.right(), r.bottom() - i0), dark(a0)),
+                (egui::pos2(r.left(), r.bottom() - i0), dark(a0)),
+            ],
+        );
+        quad(
+            &mut sh,
+            [
+                (egui::pos2(r.left() + i0, r.top()), dark(a0)),
+                (egui::pos2(r.left() + i1, r.top()), dark(a1)),
+                (egui::pos2(r.left() + i1, r.bottom()), dark(a1)),
+                (egui::pos2(r.left() + i0, r.bottom()), dark(a0)),
+            ],
+        );
+        quad(
+            &mut sh,
+            [
+                (egui::pos2(r.right() - i1, r.top()), dark(a1)),
+                (egui::pos2(r.right() - i0, r.top()), dark(a0)),
+                (egui::pos2(r.right() - i0, r.bottom()), dark(a0)),
+                (egui::pos2(r.right() - i1, r.bottom()), dark(a1)),
+            ],
+        );
+    }
+    painter.add(egui::Shape::mesh(sh));
+}
+
 pub const COMPONENT: Color32 = Color32::from_rgb(0x97, 0x47, 0xFF);
 /// Handoff status badges (white text on these, in both themes).
 pub const DEV_READY: Color32 = Color32::from_rgb(0x08, 0x7D, 0x4F);

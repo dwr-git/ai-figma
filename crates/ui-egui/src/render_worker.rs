@@ -42,6 +42,8 @@ pub struct Job {
     /// A coarse preview may come first when the zoom changes (not in pixel preview, whose pixels
     /// are the point).
     pub zoom_preview: bool,
+    /// Render the page transparent (the canvas paints the Brand backdrop under it).
+    pub transparent: bool,
     /// When the UI asked for it: how long the image took to reach the screen.
     pub at: Instant,
 }
@@ -95,6 +97,7 @@ fn run(job: &Job, view: &View, retained: &mut Retained, coarse: bool) -> Option<
         skip: job.skip.clone(),
         solo: job.solo,
         lod: true,
+        background: job.transparent.then_some(figcraft_color::Color::new(0.0, 0.0, 0.0, 0.0)),
         ..Default::default()
     };
     let (view, pix, work) = retained.render(&job.doc, job.page, view, &opts)?;

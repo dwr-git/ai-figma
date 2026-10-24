@@ -32,7 +32,7 @@ rm -f "$APP/HOSTING.md"
 
 # The panel: studio/ next to index.html.
 mkdir -p "$APP/studio"
-cp "$ROOT/studio/web/studio.js" "$ROOT/studio/web/studio.css" "$ROOT/studio/web/config.js" "$ROOT/studio/web/loader.js" "$APP/studio/"
+cp "$ROOT/studio/web/studio.js" "$ROOT/studio/web/templates.js" "$ROOT/studio/web/studio.css" "$ROOT/studio/web/config.js" "$ROOT/studio/web/loader.js" "$APP/studio/"
 cp "$ROOT/studio/web/.htaccess" "$APP/studio/"
 # AI-Figma's own icon: four tiles in the frame the other AI- apps share.
 cp "$ROOT/studio/web/favicon.png" "$ROOT/studio/web/apple-touch-icon.png" "$APP/"
@@ -56,6 +56,7 @@ STAMP="${FIGCRAFT_BUILD_SHA:0:8}"
 sed -i.bak \
   -e "s#href=\"studio/studio.css\"#href=\"studio/studio.css?v=$STAMP\"#" \
   -e "s#src=\"studio/studio.js\"#src=\"studio/studio.js?v=$STAMP\"#" \
+  -e "s#src=\"studio/templates.js\"#src=\"studio/templates.js?v=$STAMP\"#" \
   -e "s#src=\"studio/loader.js\"#src=\"studio/loader.js?v=$STAMP\"#" \
   "$APP/index.html"
 rm -f "$APP/index.html.bak"

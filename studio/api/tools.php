@@ -52,6 +52,14 @@ function studio_read_tools(): array
         [
             'type' => 'function',
             'function' => [
+                'name' => 'list_templates',
+                'description' => 'Список готовых шаблонов (id, название, группа): кнопки, поля, карточки, шапки и подвалы, экраны телефона, блоки сайта, посты и слайды.',
+                'parameters' => ['type' => 'object', 'properties' => new stdClass()],
+            ],
+        ],
+        [
+            'type' => 'function',
+            'function' => [
                 'name' => 'look_at_screen',
                 'description' => 'Сделать снимок экрана редактора и посмотреть на него. Используй, чтобы проверить результат своих действий или увидеть макет.',
                 'parameters' => ['type' => 'object', 'properties' => new stdClass()],
@@ -64,6 +72,49 @@ function studio_read_tools(): array
 function studio_act_tools(): array
 {
     return [
+        [
+            'type' => 'function',
+            'function' => [
+                'name' => 'insert_template',
+                'description' => 'Вставить готовый шаблон одним шагом (отменяется одним Ctrl+Z). Встаёт справа от остального на странице '
+                    . '(или внутрь фрейма into). Возвращает id корневого слоя.',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'template' => ['type' => 'string', 'description' => 'id шаблона: m-login, m-signup, m-home, m-profile, m-list, m-product, m-cart, m-settings, m-chat, m-empty, m-onboarding, '
+                            . 'w-hero, w-features, w-pricing, w-testimonials, w-cta, w-contact, w-dashboard, header, footer, sidebar, app-bar, tab-bar, '
+                            . 'button, button-set, input, search, toggle, checkbox, tabs, badges, toast, progress, rating, pagination, '
+                            . 'card-product, card-article, card-profile, card-price, card-stat, card-review, card-event, s-post, s-story, s-youtube, s-banner, p-card, slide-title, slide-content, p-certificate'],
+                        'accent' => ['type' => 'string', 'description' => 'Основной цвет #RRGGBB (необязательно)'],
+                        'dark' => ['type' => 'boolean', 'description' => 'Тёмный вариант'],
+                        'into' => ['type' => 'string', 'description' => 'id фрейма, внутрь которого вставить (необязательно)'],
+                    ],
+                    'required' => ['template'],
+                ],
+            ],
+        ],
+        [
+            'type' => 'function',
+            'function' => [
+                'name' => 'build_design',
+                'description' => 'Собрать новый макет целиком по описанию-дереву одним шагом (если что-то не так — не появится ничего). '
+                    . 'Лучший способ создавать новые экраны, карточки, формы: не нужно склеивать слои по одному.',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'spec' => ['type' => 'object', 'description' => 'Корневой узел: {type: "frame", name, w?, h?, layout: "vertical"|"horizontal", gap, padding, fill, cornerRadius, children: [...]}. '
+                            . 'Узлы: frame (контейнер с автолейаутом), text {text, fontSize, fontStyle: "Regular"|"Medium"|"Semi Bold"|"Bold", fill}, rectangle, ellipse, '
+                            . 'icon {icon: home|search|user|heart|bell|cart|menu|close|plus|check|arrow-left|arrow-right|chevron-right|settings|mail|lock|star|calendar|chat|image|phone|chart|grid|play|download|share|location|filter|trash|edit|globe|bolt|card|clock, size, color}. '
+                            . 'Свойства: w, h, sizingH/sizingV ("fill" — растянуть, "hug" — по содержимому, "fixed"), mainAlign/crossAlign (min|center|max|spaceBetween), '
+                            . 'stroke, strokeWeight, cornerRadius, opacity, shadow ("sm"|"md"|"lg"), textAlign. Цвета #RRGGBB или токены $accent $onAccent $bg $surface $text $muted $border $placeholder.'],
+                        'accent' => ['type' => 'string', 'description' => 'Цвет для $accent, #RRGGBB'],
+                        'dark' => ['type' => 'boolean', 'description' => 'Тёмные токены ($bg, $text…)'],
+                        'into' => ['type' => 'string', 'description' => 'id фрейма, внутрь которого добавить (необязательно; без него — новый макет справа от остальных)'],
+                    ],
+                    'required' => ['spec'],
+                ],
+            ],
+        ],
         [
             'type' => 'function',
             'function' => [
@@ -148,7 +199,14 @@ TXT;
 Порядок работы:
 1. Пойми задачу. Если она неоднозначна и ошибка дорого стоит — задай один уточняющий вопрос.
 2. Посмотри состояние (оно приложено к сообщению; свежее — get_state): страница, фреймы и их размеры, выделение.
-3. Делай командами run_command. Координаты — в пикселях; x, y детей — относительно родительского фрейма. Частые случаи:
+3. НОВОЕ создавай так (надёжно, одним шагом):
+   - похожее на готовое (вход, профиль, корзина, лендинг, тарифы, карточка товара, пост, слайд…) — insert_template, потом поправь тексты и цвета;
+   - своё — build_design с деревом целиком. Пример кнопки:
+     {"type":"frame","name":"Кнопка","layout":"horizontal","padding":[14,24,14,24],"cornerRadius":12,"fill":"$accent","mainAlign":"center",
+      "children":[{"type":"text","text":"Купить","fontSize":16,"fontStyle":"Semi Bold","fill":"$onAccent"}]}
+   - экран телефона — frame w 393, h 852, layout vertical; страница сайта — w 1440. Детям, которые должны тянуться по ширине, — "sizingH":"fill".
+   Не собирай новое из отдельных run_command: так легко ошибиться в id родителя.
+   МЕНЯЙ существующее командами run_command. Координаты — в пикселях; x, y детей — относительно родительского фрейма. Частые случаи:
    - экран: frame.create {preset?: "iPhone 16", x?, y?, width?, height?, name?, props?} → id фрейма;
    - фигуры: shape.rectangle / shape.ellipse {x, y, width, height, parent?, props?}; линия shape.line {x, y, width};
    - текст: text.create {text, x, y, parent?, width?, props: {fontSize, fontStyle: "Bold", fill: "#111111"}};
@@ -159,7 +217,8 @@ TXT;
    - выделение: select.set {ids}; группировка: object.group {ids}; компонент: component.create {ids}; удаление: edit.delete {ids};
    - выравнивание: align.left / align.hcenter / align.vcenter … {ids}; распределение: distribute.horizontal {ids, spacing?};
    - прототип: proto.interaction.add {id (кнопка), trigger: {type: "onClick"}, action: {type: "navigate", dest: id фрейма-экрана}}.
-   Если не знаешь id команды или её параметры — find_commands. Свойства слоя целиком — inspect_layer.
+   Автолейаут-свойства (gap, padding, mainAlign, crossAlign) есть только у фреймов, не у прямоугольников и текста.
+   Вкладывать слои (parent) можно только во фреймы. Если не знаешь id команды или её параметры — find_commands. Свойства слоя целиком — inspect_layer.
 4. Собирай аккуратно: выравнивай по сетке 4/8 px, используй автолейаут для кнопок, карточек и списков, давай слоям понятные имена.
 5. После заметных изменений посмотри на результат (look_at_screen) и коротко скажи, что сделал и как отменить (Ctrl+Z).
 Правила безопасности:

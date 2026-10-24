@@ -129,6 +129,8 @@ struct JobKey {
     /// Text lays out anew when fonts arrive (system fonts load in the background).
     fonts: u64,
     proof: bool,
+    /// The page renders transparent over the Brand backdrop ([`brand_backdrop`]).
+    transparent: bool,
 }
 
 impl FigApp {
@@ -191,7 +193,8 @@ pub fn show(app: &mut FigApp, ui: &mut Ui, worker: &mut Worker) {
     app.sync_preedit();
     // Retained rendering snaps the view outward and adds one pixel on each axis.
     let max_texture_side = (ctx.input(|i| i.max_texture_side).min(16_384) as u32).saturating_sub(1).max(1);
-    request_render(app, worker, ppp, max_texture_side);
+    let transparent = brand_backdrop(app, &Tokens::get(ui.ctx()));
+    request_render(app, worker, ppp, max_texture_side, transparent);
     // Every finished render is shown, even when a newer one is already on its way: renders finish
     // in order, and an edit every frame (a drag) would otherwise never show until it stopped.
     let shown = app.session.ds().map(|ds| (ds.uid, ds.page)).ok();
@@ -224,18 +227,25 @@ pub fn show(app: &mut FigApp, ui: &mut Ui, worker: &mut Worker) {
     }
     let painter = ui.painter_at(rect);
     let t = Tokens::get(&ctx);
-    // Page background (also behind a stale/partial texture).
-    let bg = app
-        .session
-        .ds()
-        .ok()
-        .and_then(|ds| match ds.doc.node(ds.page).map(|n| &n.kind) {
-            Some(NodeKind::Page { background, .. }) => Some(doc_c32(&ctx, *background)),
-            _ => None,
-        })
-        .unwrap_or(t.canvas);
-    painter.rect_filled(rect, CornerRadius::ZERO, bg);
-    crate::theme::set_canvas_page(&ctx, bg);
+    // AI-Figma's Brand theme: a page left at its default colour shows the brand backdrop (the
+    // gradient with soft glows and a faint grid) instead, and the page renders transparent over it.
+    if brand_backdrop(app, &t) {
+        crate::theme::paint_brand_backdrop(&painter, rect);
+        crate::theme::set_canvas_page(&ctx, crate::theme::BRAND_CANVAS);
+    } else {
+        // Page background (also behind a stale/partial texture).
+        let bg = app
+            .session
+            .ds()
+            .ok()
+            .and_then(|ds| match ds.doc.node(ds.page).map(|n| &n.kind) {
+                Some(NodeKind::Page { background, .. }) => Some(doc_c32(&ctx, *background)),
+                _ => None,
+            })
+            .unwrap_or(t.canvas);
+        painter.rect_filled(rect, CornerRadius::ZERO, bg);
+        crate::theme::set_canvas_page(&ctx, bg);
+    }
     if let (Some(tex), Some(v), true) = (&app.canvas.texture, &app.canvas.tex_view, shown.is_some() && app.canvas.tex_of == shown) {
         // Re-project the last render onto the current view.
         let tl = app.to_screen(v.origin.0, v.origin.1);
@@ -341,6 +351,16 @@ fn shows(c: &CanvasState, done: &Done, shown: Option<(u64, NodeId)>) -> bool {
     !(done.coarse && refined_here)
 }
 
+/// Whether the canvas shows the Brand theme's backdrop: the Brand theme, and a page still at one of
+/// the default page colours (a colour the user picked is shown as it is).
+pub(crate) fn brand_backdrop(app: &FigApp, t: &Tokens) -> bool {
+    t.brand
+        && app.session.ds().ok().is_some_and(|ds| {
+            matches!(ds.doc.node(ds.page).map(|n| &n.kind), Some(NodeKind::Page { background, .. })
+                if *background == figcraft_color::Color::DARK_PAGE || *background == figcraft_color::Color::DEFAULT_PAGE)
+        })
+}
+
 /// Whether `outer` shows all of the page that `inner` does.
 fn covers(outer: &figcraft_render::View, inner: &figcraft_render::View) -> bool {
     let (o, i) = (outer.page_rect(), inner.page_rect());
@@ -349,7 +369,7 @@ fn covers(outer: &figcraft_render::View, inner: &figcraft_render::View) -> bool 
     o.x0 <= i.x0 + eps && o.y0 <= i.y0 + eps && o.x1 >= i.x1 - eps && o.y1 >= i.y1 - eps
 }
 
-fn request_render(app: &mut FigApp, worker: &mut Worker, ppp: f32, max_texture_side: u32) {
+fn request_render(app: &mut FigApp, worker: &mut Worker, ppp: f32, max_texture_side: u32, transparent: bool) {
     let Ok(ds) = app.session.ds() else { return };
     let rect = app.canvas.rect;
     let (mut ox, mut oy) = ds.view.origin();
@@ -388,6 +408,7 @@ fn request_render(app: &mut FigApp, worker: &mut Worker, ppp: f32, max_texture_s
         solo: ds.focused(),
         fonts: figcraft_text::layout_generation(),
         proof,
+        transparent,
     };
     if let Some(previous) = &app.canvas.submitted {
         let previous_origin = (previous.origin.0 as f64 / 1000.0, previous.origin.1 as f64 / 1000.0);
@@ -412,6 +433,7 @@ fn request_render(app: &mut FigApp, worker: &mut Worker, ppp: f32, max_texture_s
         proof,
         uid: ds.uid,
         zoom_preview: ds.view.pixel_preview_scale().is_none(),
+        transparent,
         at: web_time::Instant::now(),
     };
     app.canvas.want_view = Some(job.view.clone());

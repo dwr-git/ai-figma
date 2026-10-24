@@ -24,7 +24,8 @@
   }, window.STUDIO_CONFIG || {});
 
   const isDarkTheme = (id) => id === 'dark' || id === 'brand';
-  const READ_TOOLS = new Set(['find_commands', 'get_state', 'inspect_layer', 'look_at_screen']);
+  const READ_TOOLS = new Set(['find_commands', 'get_state', 'inspect_layer', 'look_at_screen', 'list_templates']);
+  const TPL = () => window.AIFigmaTemplates;
   // Никогда: выход, ссылки наружу, служебное, тема (у панели своя кнопка), настройки, плагины, сохранение (его делает панель).
   const DENY = /^(app\.|help\.|view\.theme|file\.(quit|exit|print|page|save|open|import|export)|pref\.|plugin|libraries\.|live\.|dev\.|window\.)/i;
   // Только после подтверждения пользователя.
@@ -264,6 +265,7 @@
     // Мозг — контур из набора Tabler Icons (MIT), нарисованный градиентом #st-brain-grad.
     brain: '<svg class="st-brain-svg" viewBox="0 0 24 24" fill="none" stroke="url(#st-brain-grad)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 13a3.5 3.5 0 0 0 -3.5 3.5v1a3.5 3.5 0 0 0 7 0v-1.8"/><path d="M8.5 13a3.5 3.5 0 0 1 3.5 3.5v1a3.5 3.5 0 0 1 -7 0v-1.8"/><path d="M17.5 16a3.5 3.5 0 0 0 0 -7h-.5"/><path d="M19 9.3v-2.8a3.5 3.5 0 0 0 -7 0"/><path d="M6.5 16a3.5 3.5 0 0 1 0 -7h.5"/><path d="M5 9.3v-2.8a3.5 3.5 0 0 1 7 0v10"/></svg>',
     x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    layout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>',
     folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
     file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg>',
     bolt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3l-8 11h6l-1 7 8-11h-6z"/></svg>',
@@ -282,6 +284,7 @@
       <header class="st-head">
         <div class="st-logo st-brain st-raised-sm" aria-hidden="true">${BRAIN}</div>
         <div class="st-title"><b>Помощник</b><small data-ref="sub">Загрузка редактора…</small></div>
+        <button class="st-icon-btn" data-ref="galleryBtn" title="Шаблоны и быстрые задачи" aria-label="Шаблоны и быстрые задачи">${ICON.layout}</button>
         <button class="st-icon-btn" data-ref="filesBtn" title="Мои файлы (на сервере)" aria-label="Мои файлы">${ICON.folder}</button>
         <button class="st-icon-btn" data-ref="barBtn" title="Быстрая строка (Ctrl+Shift+Пробел)" aria-label="Быстрая строка">${ICON.bolt}</button>
         <div class="st-theme-wrap">
@@ -322,6 +325,24 @@
           <button class="st-mini" data-ref="filesSaveAs">Сохранить как…</button>
           <button class="st-mini primary" data-ref="filesSave">Сохранить</button>
         </footer>
+      </div>
+    </div>
+    <div class="st-files st-gallery" data-ref="gallery" role="dialog" aria-modal="true" aria-label="Шаблоны" hidden>
+      <div class="st-files-box st-gallery-box">
+        <header class="st-files-head">
+          <div class="st-gtabs" role="tablist"><button data-gtab="tpl" aria-selected="true">Шаблоны</button><button data-gtab="tasks" aria-selected="false">Быстрые задачи</button></div>
+          <small data-ref="galleryHint">Нажмите на шаблон — он появится на холсте. Его можно менять как угодно.</small>
+          <button class="st-icon-btn" data-ref="galleryClose" title="Закрыть (Esc)" aria-label="Закрыть">${ICON.x}</button>
+        </header>
+        <div class="st-gpane" data-pane="tpl">
+          <div class="st-files-tools">
+            <input data-ref="gSearch" type="search" placeholder="Найти: кнопка, вход, лендинг, сторис…" aria-label="Поиск шаблона">
+            <div class="st-swatches" data-ref="gAccents" role="radiogroup" aria-label="Цвет"></div>
+            <button class="st-mini" data-ref="gDark" aria-pressed="false" title="Светлый или тёмный вариант">Светлый</button>
+          </div>
+          <div class="st-gbody"><nav class="st-gcats" data-ref="gCats"></nav><div class="st-ggrid" data-ref="gGrid"></div></div>
+        </div>
+        <div class="st-gpane" data-pane="tasks" hidden><div class="st-gtasks" data-ref="gTasks"></div></div>
       </div>
     </div>
     <div class="st-ask" data-ref="ask" role="dialog" aria-modal="true" hidden>
@@ -440,6 +461,7 @@
     get_state: () => ['Смотрю состояние документа', ''],
     look_at_screen: () => ['Смотрю на экран', ''],
     inspect_layer: (a) => ['Смотрю слой', String(a.id || '')],
+    list_templates: () => ['Смотрю шаблоны', ''],
     undo: (a) => ['Отменяю', `${a.steps || 1} шаг(а)`],
   };
   function card(name, args, label) {
@@ -483,6 +505,7 @@
     log.innerHTML = `<div class="st-empty">
       <h3>Чем помочь?</h3>
       <p>Спросите, где найти функцию, или попросите собрать экран, кнопку или раскладку за вас.</p>
+      <button class="st-mini primary st-start-tpl">Шаблоны и быстрые задачи</button>
       <div class="st-chips">
         <button class="st-chip" data-act="1">Сделай экран входа для телефона: заголовок, два поля и кнопка</button>
         <button class="st-chip" data-act="1">Сделай из выделенного автолейаут с отступами 16</button>
@@ -490,6 +513,8 @@
         <button class="st-chip">Как связать экраны в прототип?</button>
         <button class="st-chip" data-act="1">Выровняй выделенные слои по центру</button>
       </div></div>`;
+    const st = log.querySelector('.st-start-tpl');
+    if (st) st.onclick = () => Gallery.show(true, 'tpl');
     log.querySelectorAll('.st-chip').forEach((c) => {
       c.onclick = () => {
         if (c.dataset.act) setMode('act');
@@ -561,6 +586,26 @@
           root.classList.remove('acting');
         }
       }
+      case 'list_templates': {
+        card(name, args);
+        return { templates: (TPL() ? TPL().list : []).map((t) => ({ id: t.id, name: t.name, group: t.cat, about: t.desc })) };
+      }
+      case 'insert_template':
+      case 'build_design': {
+        if (!TPL()) return { ok: false, error: 'Шаблоны не загрузились' };
+        const opts = { accent: typeof args.accent === 'string' && /^#[0-9a-f]{6}$/i.test(args.accent) ? args.accent : undefined, dark: !!args.dark, into: args.into != null && args.into !== '' ? args.into : undefined };
+        const t = name === 'insert_template' ? TPL().list.find((x) => x.id === args.template) : null;
+        const d = card(name, args, name === 'insert_template' ? ['Вставляю шаблон', t ? t.name : String(args.template || '')] : ['Собираю макет', String((args.spec && args.spec.name) || '')]);
+        root.classList.add('acting');
+        try {
+          const r = name === 'insert_template' ? await TPL().insert(VC(), String(args.template || ''), opts) : await TPL().build(VC(), args.spec, opts);
+          cardResult(d, true, '', true);
+          return { ok: true, id: r.id, layers: r.layers, note: 'Создано одним шагом; корневой слой выделен. Тексты и цвета меняй через node.set {ids:[…]} или inspect_layer.' };
+        } catch (e) {
+          cardResult(d, false, e.message);
+          return { ok: false, error: e.message };
+        } finally { root.classList.remove('acting'); }
+      }
       case 'undo': {
         const n = Math.max(1, Math.min(20, parseInt(args.steps, 10) || 1));
         const d = card(name, { steps: n });
@@ -572,7 +617,7 @@
   }
 
   // Модель иногда пишет вызов инструмента текстом вместо tool_calls — подхватываем его.
-  const TOOL_NAMES = ['find_commands', 'get_state', 'inspect_layer', 'look_at_screen', 'run_command', 'open_command', 'undo'];
+  const TOOL_NAMES = ['find_commands', 'get_state', 'inspect_layer', 'look_at_screen', 'list_templates', 'insert_template', 'build_design', 'run_command', 'open_command', 'undo'];
   function inlineCalls(text) {
     if (!text || !/[{[]/.test(text)) return [];
     const m = text.match(/\{[\s\S]*\}/);
@@ -1104,6 +1149,167 @@
     return { start, show, save };
   })();
 
+  // ------------------------------------------------------------------ шаблоны и быстрые задачи
+  function downloadB64(name, b64, type) {
+    const blob = new Blob([fromBase64(b64)], { type: type || 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 40000);
+  }
+  async function selectionIds() {
+    const d = await PC.call('document.inspect', { depth: 0 });
+    return Array.isArray(d.selection) ? d.selection : [];
+  }
+  async function topFrames() {
+    const d = await PC.call('document.inspect', { depth: 1 });
+    const page = (d.pages || []).find((p) => p.id === d.currentPage) || {};
+    return (page.children || []).filter((n) => /FRAME|COMPONENT|SECTION/.test(String(n.type)))
+      .sort((a, b) => ((a.absoluteBounds || a).x - (b.absoluteBounds || b).x) || ((a.absoluteBounds || a).y - (b.absoluteBounds || b).y));
+  }
+  const needSel = async (min = 1) => {
+    const ids = await selectionIds();
+    if (ids.length < min) throw new Error(min > 1 ? `Выделите хотя бы ${min} слоя (Shift+щелчок).` : 'Сначала выделите слой на холсте.');
+    return ids;
+  };
+  // Быстрые задачи: те, что делаются командами, — сразу; остальные — через помощника.
+  const TASKS = [
+    ['Раскладка', [
+      ['Автолейаут из выделенного', 'Слои выстроятся в колонку с равными отступами (как Shift+A в Figma)', async () => { await needSel(); await PC.exec('layout.add', { direction: 'vertical' }); }],
+      ['Автолейаут в строку', 'То же, но слои встанут в ряд', async () => { await needSel(); await PC.exec('layout.add', { direction: 'horizontal' }); }],
+      ['Выровнять по центру', 'По центру друг друга или своего фрейма', async () => { await needSel(); await PC.exec('align.hcenter'); await PC.exec('align.vcenter'); }],
+      ['Распределить по горизонтали', 'Равные промежутки между выделенными', async () => { await needSel(3); await PC.exec('distribute.horizontal'); }],
+      ['Распределить по вертикали', 'Равные промежутки сверху вниз', async () => { await needSel(3); await PC.exec('distribute.vertical'); }],
+      ['Сгруппировать', 'Ctrl+G', async () => { await needSel(); await PC.exec('object.group'); }],
+      ['Разгруппировать', 'Ctrl+Shift+G', async () => { await needSel(); await PC.exec('object.ungroup'); }],
+    ]],
+    ['Оформление', [
+      ['Мягкая тень', 'Тень под выделенным', async () => { const ids = await needSel(); await PC.exec('node.set', { ids, effects: [{ type: 'dropShadow', color: '#0000001F', offset: [0, 8], radius: 24 }] }); }],
+      ['Скруглить углы', 'Радиус 12 у выделенного', async () => { const ids = await needSel(); await PC.exec('node.set', { ids, cornerRadius: 12 }); }],
+      ['Сделать компонент', 'Ctrl+Alt+K: элемент для повторного использования', async () => { await needSel(); await PC.exec('component.create'); }],
+      ['Обрезать содержимое', 'Всё, что выходит за фрейм, скрыть', async () => { const ids = await needSel(); await PC.exec('node.set', { ids, clip: true }); }],
+    ]],
+    ['Прототип и показ', [
+      ['Связать экраны по порядку', 'Щелчок по экрану ведёт на следующий (слева направо)', async () => {
+        const frames = await topFrames();
+        if (frames.length < 2) throw new Error('Нужно хотя бы два экрана (фрейма) на странице.');
+        const commands = frames.slice(0, -1).map((f, i) => ({ command: 'proto.interaction.add', params: { id: f.id, trigger: { type: 'onClick' }, action: { type: 'navigate', dest: frames[i + 1].id } } }));
+        await PC.exec('command.batch', { label: 'Связать экраны', commands });
+        toast(`Связано экранов: ${frames.length}. «Показать прототип» — чтобы пощёлкать.`);
+      }],
+      ['Показать прототип', 'Во весь экран, как в Figma (Esc — выход)', async () => { await PC.exec('proto.present'); }],
+    ]],
+    ['Экспорт и файлы', [
+      ['Экспорт выделенного в PNG ×2', 'Картинка в двойном размере — для сайтов и соцсетей', async () => { const ids = await needSel(); const r = await PC.exec('file.export', { ids, format: 'png', scale: 2 }); downloadB64('экспорт@2x.png', r.data, 'image/png'); }],
+      ['Экспорт выделенного в SVG', 'Вектор для разработчиков', async () => { const ids = await needSel(); const r = await PC.exec('file.export', { ids, format: 'svg' }); downloadB64('экспорт.svg', r.data, 'image/svg+xml'); }],
+      ['Все экраны в PDF', 'Каждый фрейм — отдельная страница', async () => { const r = await PC.exec('file.exportFramesPdf'); downloadB64('экраны.pdf', r.data, 'application/pdf'); }],
+      ['Сохранить на сервер', 'Ctrl+S', async () => { await Files.save(false); }],
+      ['Новая страница', 'Ещё одна страница в этом файле', async () => { await PC.exec('page.add'); }],
+    ]],
+    ['Попросить помощника', [
+      ['Собрать лендинг', 'Опишите продукт — помощник соберёт страницу из блоков', 'Собери лендинг для: '],
+      ['Тёмная версия экрана', 'Копия выделенного экрана в тёмных цветах', '!Сделай тёмную версию выделенного экрана рядом с ним'],
+      ['Мобильная версия', 'Копия выделенного под ширину телефона 393', '!Сделай мобильную версию выделенного экрана шириной 393 рядом с ним'],
+      ['Проверить отступы', 'Найти неровности и поправить', '!Проверь выравнивание и отступы на текущем экране и поправь неровности'],
+      ['Перевести на английский', 'Все тексты на странице', '!Переведи все тексты на текущей странице на английский'],
+      ['Варианты цвета', 'Три цветовые схемы для выделенного', '!Сделай три копии выделенного рядом с разными цветовыми схемами'],
+      ['Объяснить экран', 'Как устроен выделенный макет и что улучшить', '?Объясни, как устроен выделенный экран, и что можно улучшить'],
+    ]],
+  ];
+  const Gallery = (() => {
+    let cat = 'Все';
+    let accent = store.get('tplAccent', TPL() ? TPL().ACCENTS[0][0] : '#667EEA');
+    let dark = store.get('tplDark', false);
+    function show(on = true, tab) {
+      $('gallery').hidden = !on;
+      if (!on) return;
+      if (tab) setTab(tab);
+      renderCats(); renderGrid(); renderTasks();
+      setTimeout(() => $('gSearch').focus(), 30);
+    }
+    function setTab(tab) {
+      root.querySelectorAll('[data-gtab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.gtab === tab)));
+      root.querySelectorAll('.st-gpane').forEach((p) => { p.hidden = p.dataset.pane !== tab; });
+      $('galleryHint').textContent = tab === 'tpl' ? 'Нажмите на шаблон — он появится на холсте. Его можно менять как угодно.' : 'Задачи в одно нажатие. Большинству нужно выделить слой на холсте.';
+    }
+    function renderCats() {
+      const cats = ['Все', ...new Set(TPL().list.map((t) => t.cat))];
+      $('gCats').innerHTML = cats.map((c) => `<button data-cat="${esc(c)}" aria-pressed="${c === cat}">${esc(c)}</button>`).join('');
+      $('gCats').querySelectorAll('button').forEach((b) => { b.onclick = () => { cat = b.dataset.cat; renderCats(); renderGrid(); }; });
+      $('gAccents').innerHTML = TPL().ACCENTS.map(([c, n]) => `<button role="radio" aria-checked="${c === accent}" title="${esc(n)}" data-c="${c}" style="background:${c}"></button>`).join('');
+      $('gAccents').querySelectorAll('button').forEach((b) => { b.onclick = () => { accent = b.dataset.c; store.set('tplAccent', accent); renderCats(); renderGrid(); }; });
+      $('gDark').textContent = dark ? 'Тёмный' : 'Светлый';
+      $('gDark').setAttribute('aria-pressed', String(dark));
+    }
+    function renderGrid() {
+      const q = norm($('gSearch').value).trim();
+      const items = TPL().list.filter((t) => (cat === 'Все' || t.cat === cat) && (!q || norm(t.name + ' ' + t.desc + ' ' + t.cat + ' ' + t.keywords).includes(q)));
+      const grid = $('gGrid');
+      grid.innerHTML = '';
+      if (!items.length) { grid.innerHTML = '<p class="st-files-empty">Ничего не нашлось. Можно попросить помощника: «Сделай …».</p>'; return; }
+      for (const t of items) {
+        const c = document.createElement('button');
+        c.className = 'st-tpl';
+        c.title = t.desc;
+        c.innerHTML = `<div class="st-tpl-prev"></div><b>${esc(t.name)}</b><small>${esc(t.desc)}</small>`;
+        const box = c.querySelector('.st-tpl-prev');
+        box.style.background = dark ? '#1A1D27' : '#EEF0F6';
+        const node = TPL().preview(t.build(), { accent, dark });
+        node.style.position = 'absolute'; node.style.left = '0'; node.style.top = '0'; node.style.transformOrigin = '0 0';
+        box.appendChild(node);
+        c.onclick = () => insert(t);
+        grid.appendChild(c);
+        requestAnimationFrame(() => {
+          const w = node.offsetWidth || 1, h = node.offsetHeight || 1;
+          const k = Math.min(box.clientWidth / w, box.clientHeight / h, 1);
+          node.style.transform = `translate(${(box.clientWidth - w * k) / 2}px, ${(box.clientHeight - h * k) / 2}px) scale(${k})`;
+        });
+      }
+    }
+    async function insert(t) {
+      if (!PC.ready()) return;
+      try {
+        const doc = await PC.call('document.inspect', { depth: 0 }).catch(() => null);
+        if (!doc || !doc.name) await PC.exec('file.new');
+        const r = await TPL().insert(VC(), t.id, { accent, dark });
+        show(false);
+        toast(`«${t.name}»: ${r.layers} слоёв. Двойной щелчок по тексту — изменить, Ctrl+Z — убрать.`);
+      } catch (e) { toast('Не получилось вставить: ' + e.message, true); }
+    }
+    function renderTasks() {
+      $('gTasks').innerHTML = TASKS.map(([group, items], gi) => `<section><h4>${esc(group)}</h4><div>${items.map(([n, d], i) => `<button class="st-task" data-g="${gi}" data-i="${i}"><b>${esc(n)}</b><small>${esc(d)}</small></button>`).join('')}</div></section>`).join('');
+      $('gTasks').querySelectorAll('.st-task').forEach((b) => {
+        const [, , run] = TASKS[+b.dataset.g][1][+b.dataset.i];
+        b.onclick = async () => {
+          if (typeof run === 'string') {
+            show(false);
+            setOpen(true);
+            const ask = run.startsWith('?') ? 'advice' : 'act';
+            setMode(ask);
+            const text = run.replace(/^[!?]/, '');
+            if (/^[!?]/.test(run)) { input.value = text; send(); } else { input.value = text; autosize(); input.focus(); input.setSelectionRange(text.length, text.length); }
+            return;
+          }
+          b.disabled = true;
+          try { await run(); show(false); toast('Готово: ' + b.querySelector('b').textContent + '. Ctrl+Z — отменить.'); }
+          catch (e) { toast(e.message, true); }
+          finally { b.disabled = false; }
+        };
+      });
+    }
+    function start() {
+      if (!TPL()) { $('galleryBtn').hidden = true; return; }
+      $('galleryBtn').onclick = () => show(true, 'tpl');
+      $('galleryClose').onclick = () => show(false);
+      $('gallery').addEventListener('pointerdown', (e) => { if (e.target === $('gallery')) show(false); });
+      $('gallery').addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); show(false); } });
+      root.querySelectorAll('[data-gtab]').forEach((b) => { b.onclick = () => setTab(b.dataset.gtab); });
+      $('gSearch').addEventListener('input', renderGrid);
+      $('gDark').onclick = () => { dark = !dark; store.set('tplDark', dark); renderCats(); renderGrid(); };
+    }
+    return { start, show };
+  })();
+
   // ------------------------------------------------------------------ тема
   const panelThemeOf = (themeId) => (themeId === 'brand' ? 'brand' : (isDarkTheme(themeId) ? 'dark' : 'light'));
   function applyPanelTheme(themeId) {
@@ -1224,6 +1430,7 @@
     commands().catch(() => {});
     watchTheme();
     Files.start();
+    Gallery.start();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

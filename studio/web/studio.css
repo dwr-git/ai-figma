@@ -467,3 +467,38 @@ body.studio-open .st-bar { left: calc((100% - var(--st-w)) / 2); width: min(640p
 #studio-root[data-theme="brand"] :is(.st-files-tools input, .st-ask-box input) { background: #161627; box-shadow: none; border: 1px solid rgba(255, 255, 255, .12); }
 #studio-root[data-theme="brand"] .st-file:hover, #studio-root[data-theme="brand"] .st-file:focus-visible { background: rgba(255, 255, 255, .08); }
 .st-ask { z-index: 85; }
+
+/* ---- Шаблоны и быстрые задачи ---- */
+.st-gallery-box { width: min(1100px, 100%); max-height: min(820px, 100%); height: 100%; }
+.st-gallery .st-files-head small { margin-left: 8px; }
+.st-gtabs { display: flex; gap: 4px; padding: 3px; border-radius: 12px; background: rgba(127, 140, 180, .14); }
+.st-gtabs button { border: 0; background: none; cursor: pointer; padding: 7px 14px; border-radius: 9px; font: 600 14px var(--st-font); color: var(--st-text-dim); }
+.st-gtabs button[aria-selected="true"] { background: var(--st-surface); color: var(--st-text); box-shadow: 0 2px 8px rgba(0, 0, 0, .15); }
+.st-gpane { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.st-gpane[hidden] { display: none !important; }
+.st-swatches { display: flex; gap: 6px; align-items: center; }
+.st-swatches button { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; box-shadow: 0 0 0 1px rgba(127, 140, 180, .35); }
+.st-swatches button[aria-checked="true"] { border-color: var(--st-text); }
+.st-gbody { flex: 1; min-height: 0; display: flex; gap: 8px; padding: 0 12px 12px 20px; }
+.st-gcats { display: flex; flex-direction: column; gap: 2px; width: 170px; flex: none; overflow: auto; }
+.st-gcats button { text-align: left; border: 0; background: none; cursor: pointer; padding: 8px 10px; border-radius: 9px; font: 500 13.5px var(--st-font); color: var(--st-text-dim); }
+.st-gcats button[aria-pressed="true"] { background: rgba(127, 140, 180, .18); color: var(--st-text); font-weight: 600; }
+.st-ggrid { flex: 1; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; align-content: start; padding: 2px 6px 12px 2px; }
+.st-tpl { display: flex; flex-direction: column; gap: 4px; text-align: left; border: 1px solid rgba(127, 140, 180, .2); background: rgba(127, 140, 180, .06); border-radius: 14px; padding: 8px 8px 10px; cursor: pointer; color: var(--st-text); font: 13px var(--st-font); }
+.st-tpl:hover { border-color: var(--st-accent); background: rgba(127, 140, 180, .12); }
+.st-tpl b { font-size: 13.5px; padding: 0 4px; }
+.st-tpl small { color: var(--st-text-faint); padding: 0 4px; font-size: 12px; line-height: 1.35; }
+.st-tpl-prev { position: relative; height: 140px; border-radius: 10px; overflow: hidden; background: repeating-conic-gradient(rgba(127,140,180,.08) 0 25%, transparent 0 50%) 0 0 / 16px 16px; pointer-events: none; }
+.st-tpl-prev * { font-family: "Inter", system-ui, sans-serif; }
+.st-gtasks { flex: 1; overflow: auto; padding: 0 20px 16px; display: flex; flex-direction: column; gap: 18px; }
+.st-gtasks h4 { margin: 4px 0 8px; font-size: 13px; color: var(--st-text-faint); text-transform: uppercase; letter-spacing: .04em; }
+.st-gtasks section > div { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.st-task { display: flex; flex-direction: column; gap: 3px; text-align: left; cursor: pointer; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(127, 140, 180, .2); background: rgba(127, 140, 180, .06); color: var(--st-text); font: 13px var(--st-font); }
+.st-task:hover { border-color: var(--st-accent); }
+.st-task[disabled] { opacity: .5; cursor: wait; }
+.st-task b { font-size: 14px; }
+.st-task small { color: var(--st-text-faint); line-height: 1.35; }
+.st-start-tpl { margin: 4px auto 12px; display: block; }
+#studio-root[data-theme="brand"] .st-gtabs button[aria-selected="true"] { background: rgba(255, 255, 255, .14); }
+#studio-root[data-theme="brand"] :is(.st-tpl, .st-task) { background: rgba(255, 255, 255, .04); border-color: rgba(255, 255, 255, .1); }
+@media (max-width: 700px) { .st-gcats { display: none; } .st-gbody { padding-left: 12px; } }
