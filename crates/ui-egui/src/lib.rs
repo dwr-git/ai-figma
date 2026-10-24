@@ -305,6 +305,11 @@ pub trait Services {
     /// Keep the preferences now (the installed plugins or their settings changed), as the app
     /// does when it quits.
     fn save_prefs(&mut self, _prefs: &figcraft_engine::Prefs) {}
+    /// The page keeps files somewhere of its own (AI-Figma: a folder on its server), so Save and
+    /// Save as go there instead of to a file on disk; true when the page took the save.
+    fn save_to_page(&mut self, _save_as: bool) -> bool {
+        false
+    }
     /// The OS or browser language as a tag ("es-ES"), for the "system" language preference.
     fn system_language(&self) -> Option<String> {
         None
@@ -1115,7 +1120,8 @@ impl FigApp {
                     }
                 }
                 "preview.close" => self.ui.preview = None,
-                "open.help" => self.services.open_url("https://getartcraft.com/apps/figcraft"),
+                // AI-Figma: help is the assistant panel beside the editor (the web page opens it).
+                "open.help" => self.services.open_url("studio:help"),
                 "layers.collapseAll" => layers::collapse_all(self),
                 "contextMenu" => self.ui.key_menu = true,
                 "selectArea" => self.start_key_box(),
@@ -1190,6 +1196,9 @@ impl FigApp {
     }
 
     pub fn save_as_dialog(&mut self) {
+        if self.session.doc().is_ok() && self.services.save_to_page(true) {
+            return;
+        }
         let Ok(name) = self.session.doc().map(|d| d.name.clone()) else { return };
         self.pick_save(i18n::tr("Save as"), &format!("{name}.figcraft"), &["figcraft", "fig"], |app, mut p| {
             if p.extension().is_none_or(OsStr::is_empty) {
@@ -1220,6 +1229,9 @@ impl FigApp {
     }
 
     pub fn save(&mut self) {
+        if self.session.doc().is_ok() && self.services.save_to_page(false) {
+            return;
+        }
         // A branch tab saves its main file.
         let tab = figcraft_engine::branches::file_tab(&self.session);
         // A path ending in .fig is never saved over silently: a .fig destination is an export copy.
@@ -1446,8 +1458,9 @@ impl FigApp {
             ctx.set_zoom_factor(plan.zoom);
             self.ui.ui_scale = plan;
         }
+        let brand = self.session.prefs.theme == "brand";
         let dark = match self.session.prefs.theme.as_str() {
-            "dark" => true,
+            "dark" | "brand" => true,
             // The active visuals were set by us last frame (possibly for a manual theme).
             // Read the integration's OS theme instead; without one, keep the light fallback.
             "system" => ctx.system_theme() == Some(egui::Theme::Dark),
@@ -1456,7 +1469,14 @@ impl FigApp {
         self.ui.dark = dark;
         // New files take the theme's page colour (existing pages keep theirs).
         self.session.set_ui_dark(dark);
-        theme::apply_with(ctx, if dark { theme::Tokens::dark() } else { theme::Tokens::light() }, self.reduce_motion());
+        let tokens = if brand {
+            theme::Tokens::brand()
+        } else if dark {
+            theme::Tokens::dark()
+        } else {
+            theme::Tokens::light()
+        };
+        theme::apply_with(ctx, tokens, self.reduce_motion());
         if self.worker.is_none() {
             self.worker = Some(render_worker::Worker::new(ctx.clone()));
         }

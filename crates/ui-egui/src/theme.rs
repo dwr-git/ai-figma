@@ -1,12 +1,15 @@
 //! Design tokens (UI3 light and dark) and fonts.
 
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
 use egui::{Color32, Context, FontData, FontDefinitions, FontFamily, FontId, Stroke, TextStyle, Visuals};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Tokens {
     pub dark: bool,
+    /// AI-Figma's Brand theme: dark navy panels, the brand's blue-violet accent and solid black
+    /// menus, popups and windows with a strong shadow.
+    pub brand: bool,
     pub bg: Color32,
     pub panel: Color32,
     pub canvas: Color32,
@@ -89,6 +92,7 @@ impl Tokens {
     pub fn light() -> Self {
         Self {
             dark: false,
+            brand: false,
             bg: Color32::from_rgb(0xFF, 0xFF, 0xFF),
             panel: Color32::from_rgb(0xFF, 0xFF, 0xFF),
             canvas: Color32::from_rgb(0xF5, 0xF5, 0xF5),
@@ -131,6 +135,7 @@ impl Tokens {
     pub fn dark() -> Self {
         Self {
             dark: true,
+            brand: false,
             bg: Color32::from_rgb(0x2C, 0x2C, 0x2C),
             panel: Color32::from_rgb(0x2C, 0x2C, 0x2C),
             canvas: Color32::from_rgb(0x1E, 0x1E, 0x1E),
@@ -165,6 +170,50 @@ impl Tokens {
             menu_hover: ACCENT,
             menu_dim: Color32::from_rgb(0x9A, 0x9A, 0x9A),
             focus: BRAND,
+        }
+    }
+
+    /// AI-Figma's Brand theme: the brand gradient's navy (#0a0a0f → #1a1a2e → #16213e) for the
+    /// panels and canvas, the brand's blue-violet (#667eea → #764ba2) for the accent, and solid
+    /// black menus and windows.
+    pub fn brand() -> Self {
+        Self {
+            dark: true,
+            brand: true,
+            bg: Color32::from_rgb(0x14, 0x15, 0x24),
+            panel: Color32::from_rgb(0x16, 0x18, 0x2A),
+            canvas: Color32::from_rgb(0x0C, 0x0D, 0x17),
+            border: Color32::from_rgb(0x2A, 0x2D, 0x46),
+            border_strong: Color32::from_rgb(0x3A, 0x3E, 0x5E),
+            text: Color32::from_rgb(0xFF, 0xFF, 0xFF),
+            text_secondary: Color32::from_rgb(0xB7, 0xBB, 0xD8),
+            text_tertiary: Color32::from_rgb(0x8C, 0x91, 0xB4),
+            icon: Color32::from_rgb(0xF3, 0xF4, 0xFF),
+            icon_secondary: Color32::from_rgb(0xB7, 0xBB, 0xD8),
+            hover: Color32::from_rgb(0x22, 0x25, 0x3E),
+            pressed: Color32::from_rgb(0x2D, 0x31, 0x52),
+            field: Color32::from_rgb(0x1F, 0x22, 0x38),
+            field_hover_border: Color32::from_rgb(0x3A, 0x3E, 0x5E),
+            accent: Color32::from_rgb(0x66, 0x7E, 0xEA),
+            accent_hover: Color32::from_rgb(0x80, 0x93, 0xFF),
+            accent_on: Color32::WHITE,
+            accent_text: Color32::from_rgb(0xA9, 0xB4, 0xFF),
+            selected_row: Color32::from_rgb(0x2A, 0x30, 0x66),
+            selected_row_child: Color32::from_rgb(0x20, 0x25, 0x4E),
+            component: Color32::from_rgb(0xD2, 0x7C, 0xFF),
+            component_row: Color32::from_rgb(0x3A, 0x2D, 0x56),
+            danger: Color32::from_rgb(0xF2, 0x48, 0x22),
+            success: DEV_READY,
+            warning: Color32::from_rgb(0xFF, 0xCD, 0x29),
+            guide: Color32::from_rgb(0xF2, 0x48, 0x22),
+            tab_bar: Color32::from_rgb(0x0C, 0x0D, 0x17),
+            tab_active: Color32::from_rgb(0x16, 0x18, 0x2A),
+            shadow: Color32::from_black_alpha(200),
+            menu: Color32::BLACK,
+            menu_text: Color32::from_rgb(0xFF, 0xFF, 0xFF),
+            menu_hover: Color32::from_rgb(0x4B, 0x55, 0xC8),
+            menu_dim: Color32::from_rgb(0x9A, 0x9C, 0xB4),
+            focus: Color32::from_rgb(0x8F, 0x9B, 0xFF),
         }
     }
 
@@ -242,6 +291,13 @@ fn visuals(t: Tokens) -> Visuals {
     v.widgets.active.weak_bg_fill = t.pressed;
     v.widgets.active.bg_stroke = Stroke::new(1.0, ACCENT);
     v.popup_shadow = egui::Shadow { offset: [0, 4], blur: 16, spread: 0, color: t.shadow };
+    if t.brand {
+        // Brand: menus, popups and windows are solid black blocks with a strong black shadow.
+        v.window_fill = Color32::BLACK;
+        v.window_stroke = Stroke::new(1.0, Color32::from_rgb(0x26, 0x28, 0x3C));
+        v.popup_shadow = egui::Shadow { offset: [0, 8], blur: 32, spread: 0, color: Color32::BLACK };
+        v.window_shadow = egui::Shadow { offset: [0, 8], blur: 32, spread: 0, color: Color32::BLACK };
+    }
     v.window_shadow = egui::Shadow { offset: [0, 8], blur: 24, spread: 0, color: t.shadow };
     v.text_cursor.stroke = Stroke::new(1.0, ACCENT);
     v
@@ -394,34 +450,29 @@ pub fn brand(size: f32) -> FontId {
     FontId::new(size, FontFamily::Name("brand".into()))
 }
 
-/// The two-tone Archivo wordmark used in the home sidebar and About window.
+/// The two-tone wordmark used in the home sidebar and About window: "AI-" in the accent, "Figma".
 pub fn paint_wordmark(painter: &egui::Painter, left_center: egui::Pos2, size: f32, t: &Tokens) {
     let font = brand(size);
-    let fig = painter.layout_no_wrap("Fig".into(), font.clone(), t.text);
-    let fig_width = fig.size().x;
-    painter.galley(egui::pos2(left_center.x, left_center.y - fig.size().y / 2.0), fig, t.text);
-    painter.text(egui::pos2(left_center.x + fig_width, left_center.y), egui::Align2::LEFT_CENTER, "Craft", font, t.accent_text);
+    let ai = painter.layout_no_wrap("AI-".into(), font.clone(), t.accent_text);
+    let ai_width = ai.size().x;
+    painter.galley(egui::pos2(left_center.x, left_center.y - ai.size().y / 2.0), ai, t.accent_text);
+    painter.text(egui::pos2(left_center.x + ai_width, left_center.y), egui::Align2::LEFT_CENTER, "Figma", font, t.text);
 }
 
-/// Paint the owner's original chameleon icon from the existing app asset.
+/// AI-Figma's icon, drawn in code: a thick rounded frame around four tiles (the frame the other
+/// AI- apps' icons share), in the text colour on the panel.
 pub fn paint_app_icon(ui: &egui::Ui, rect: egui::Rect) {
-    static ICON: OnceLock<Option<egui::ColorImage>> = OnceLock::new();
-    let image = ICON.get_or_init(|| {
-        let rgba = image::load_from_memory(include_bytes!("../../../assets/app-icon/figcraft-64.png")).ok()?.to_rgba8();
-        Some(egui::ColorImage::from_rgba_unmultiplied([rgba.width() as usize, rgba.height() as usize], rgba.as_raw()))
-    });
-    let Some(image) = image else {
-        ui.painter().rect_filled(rect, egui::CornerRadius::same(5), BRAND);
-        crate::icons::paint(ui.painter(), rect.shrink(rect.width() * 0.22), crate::icons::Icon::Logo, ACCENT_ON);
-        return;
-    };
-    let id = egui::Id::new("figcraft_original_app_icon");
-    let texture = ui.ctx().data(|data| data.get_temp::<egui::TextureHandle>(id)).unwrap_or_else(|| {
-        let texture = ui.ctx().load_texture("figcraft-original-app-icon", image.clone(), egui::TextureOptions::LINEAR);
-        ui.ctx().data_mut(|data| data.insert_temp(id, texture.clone()));
-        texture
-    });
-    ui.painter().image(texture.id(), rect, egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)), Color32::WHITE);
+    let t = Tokens::get(ui.ctx());
+    let s = rect.width().min(rect.height()) / 32.0;
+    let o = rect.center() - egui::vec2(16.0, 16.0) * s;
+    let r = |x0: f32, y0: f32, x1: f32, y1: f32| egui::Rect::from_min_max(o + egui::vec2(x0, y0) * s, o + egui::vec2(x1, y1) * s);
+    let p = ui.painter();
+    p.rect_filled(r(2.0, 2.0, 30.0, 30.0), egui::CornerRadius::same((5.0 * s).round().clamp(0.0, 255.0) as u8), t.text);
+    p.rect_filled(r(7.5, 7.5, 24.5, 24.5), egui::CornerRadius::same((s).round().clamp(0.0, 255.0) as u8), t.panel);
+    let tile = egui::CornerRadius::same((1.2 * s).round().clamp(0.0, 255.0) as u8);
+    for (x, y) in [(10.5, 10.5), (16.6, 10.5), (10.5, 16.6), (16.6, 16.6)] {
+        p.rect_filled(r(x, y, x + 4.9, y + 4.9), tile, t.text);
+    }
 }
 
 pub fn regular(size: f32) -> FontId {

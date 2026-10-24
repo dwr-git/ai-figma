@@ -1,0 +1,273 @@
+<?php
+// studio/api/files.php — файлы AI-Figma на вашем сервере. У каждого пользователя своя папка.
+//
+//   GET  files.php                          → {ok, user, files: [{name, size, modified}], limit}
+//   GET  files.php?action=load&name=…       → сам файл (.figcraft), application/octet-stream
+//   POST files.php?action=save&name=…[&overwrite=1]   тело — байты файла → {ok, name, size, modified}
+//   POST files.php?action=rename  {name, to}   → {ok}
+//   POST files.php?action=delete  {name}       → {ok}  (файл уходит в корзину .trash/ папки пользователя)
+//
+// Где лежат файлы: AI_FIGMA_DATA_DIR из .env, иначе папка data/ai-figma рядом с корнем сайта
+// (/app/data/ai-figma при корне /app/src — вне корня, nginx её не отдаёт), а если туда нельзя
+// писать — ai-figma-data рядом с папкой приложения (закройте её в nginx: см. nginx.conf.example).
+// Имена файлов на диске случайные, список — в index.json папки пользователя.
+
+declare(strict_types=1);
+
+header('Cache-Control: no-store, max-age=0');
+header('X-Content-Type-Options: nosniff');
+
+function files_fail(int $http, string $message, array $extra = []): void
+{
+    http_response_code($http);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok' => false, 'error' => $message] + $extra, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+function files_ok(array $data): void
+{
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok' => true] + $data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+ini_set('display_errors', '0');
+set_exception_handler(static function (Throwable $e): void {
+    error_log('ai-figma files: ' . $e->getMessage());
+    files_fail(500, 'Внутренняя ошибка хранилища файлов. Подробности — в журнале PHP.');
+});
+
+$STUDIO = require __DIR__ . '/settings.php';
+
+// ---------------------------------------------------------------- кто это
+$user = 'local';
+if ($STUDIO['auth_file'] !== '' && is_file($STUDIO['auth_file'])) {
+    require_once $STUDIO['auth_file'];
+    if (!function_exists('isLoggedIn') || !isLoggedIn()) {
+        files_fail(401, 'Войдите в систему, чтобы открыть свои файлы.', ['login' => true]);
+    }
+    $u = function_exists('getCurrentUser') ? getCurrentUser() : null;
+    $id = is_array($u) ? ($u['id'] ?? $u['login'] ?? null) : null;
+    if ($id === null || $id === '') {
+        files_fail(500, 'auth.php не сообщил, кто вошёл (getCurrentUser).');
+    }
+    $user = (string)$id;
+} elseif (!$STUDIO['allow_anonymous']) {
+    files_fail(500, 'Не найден auth.php системы. Укажите путь в AI_FIGMA_AUTH_FILE (см. README.ru.md).');
+}
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
+
+// ---------------------------------------------------------------- где лежат файлы
+function files_root(): string
+{
+    $env = studio_env('AI_FIGMA_DATA_DIR');
+    if ($env !== '') {
+        return rtrim($env, '/');
+    }
+    $docRoot = rtrim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''), '/');
+    if ($docRoot !== '' && is_dir(dirname($docRoot))) {
+        $outside = dirname($docRoot) . '/data/ai-figma';
+        if (is_dir($outside) ? is_writable($outside) : (is_dir(dirname($outside)) ? is_writable(dirname($outside)) : is_writable(dirname($docRoot)))) {
+            return $outside;
+        }
+    }
+    return dirname(__DIR__, 2) . '/ai-figma-data';
+}
+
+$root = files_root();
+if (!is_dir($root) && !@mkdir($root, 0770, true) && !is_dir($root)) {
+    files_fail(500, "Не удалось создать папку для файлов: $root. Создайте её и дайте PHP право записи (или укажите AI_FIGMA_DATA_DIR).");
+}
+// Если папка всё же внутри сайта — закрываем её для Apache и не даём листать.
+if (!is_file("$root/.htaccess")) {
+    @file_put_contents("$root/.htaccess", "Require all denied\n");
+}
+if (!is_file("$root/index.html")) {
+    @file_put_contents("$root/index.html", '');
+}
+$dir = $root . '/u-' . preg_replace('/[^A-Za-z0-9_-]/', '_', $user);
+if (!is_dir($dir) && !@mkdir($dir, 0770, true) && !is_dir($dir)) {
+    files_fail(500, 'Не удалось создать папку пользователя. Проверьте права PHP на ' . $root);
+}
+
+const FILES_MAX_BYTES = 512 * 1024 * 1024;
+const FILES_MAX_COUNT = 2000;
+
+/** Имя файла, как его видит пользователь: без путей и служебных символов. */
+function files_name(?string $name): string
+{
+    $name = trim((string)$name);
+    $name = preg_replace('/\.figcraft$/i', '', $name) ?? '';
+    $name = preg_replace('/[\x00-\x1F\x7F\/\\\\]+/u', ' ', $name) ?? '';
+    $name = trim(preg_replace('/\s+/u', ' ', $name) ?? '');
+    if ($name === '' || $name === '.' || $name === '..') {
+        files_fail(400, 'Пустое имя файла.');
+    }
+    if (mb_strlen($name) > 120) {
+        $name = mb_substr($name, 0, 120);
+    }
+    return $name;
+}
+
+/** Список файлов пользователя под блокировкой: $fn меняет его и возвращает результат. */
+function files_index(string $dir, callable $fn)
+{
+    $lock = fopen("$dir/index.lock", 'c');
+    if ($lock === false) {
+        files_fail(500, 'Не удалось открыть список файлов.');
+    }
+    flock($lock, LOCK_EX);
+    try {
+        $raw = is_file("$dir/index.json") ? file_get_contents("$dir/index.json") : '';
+        $index = $raw ? json_decode($raw, true) : [];
+        if (!is_array($index)) {
+            $index = [];
+        }
+        $before = $index;
+        $result = $fn($index);
+        if ($index !== $before) {
+            $tmp = "$dir/index.json." . bin2hex(random_bytes(4));
+            file_put_contents($tmp, json_encode($index, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+            rename($tmp, "$dir/index.json");
+        }
+        return $result;
+    } finally {
+        flock($lock, LOCK_UN);
+        fclose($lock);
+    }
+}
+
+function files_json_body(): array
+{
+    $j = json_decode((string)file_get_contents('php://input'), true);
+    return is_array($j) ? $j : [];
+}
+
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+$action = (string)($_GET['action'] ?? ($method === 'GET' ? 'list' : ''));
+
+switch ($action) {
+    case 'list':
+        $files = files_index($dir, static function (array &$index): array {
+            $out = [];
+            foreach ($index as $name => $f) {
+                $out[] = ['name' => (string)$name, 'size' => (int)($f['size'] ?? 0), 'modified' => (int)($f['modified'] ?? 0)];
+            }
+            usort($out, static fn($a, $b) => $b['modified'] <=> $a['modified']);
+            return $out;
+        });
+        files_ok(['user' => $user, 'files' => $files, 'limit' => FILES_MAX_BYTES]);
+
+    case 'load':
+        $name = files_name($_GET['name'] ?? '');
+        $file = files_index($dir, static fn(array &$index) => $index[$name]['file'] ?? null);
+        if (!is_string($file) || !preg_match('/^[0-9a-f]{32}\.figcraft$/', $file) || !is_file("$dir/$file")) {
+            files_fail(404, "Файла «{$name}» нет.");
+        }
+        header('Content-Type: application/octet-stream');
+        header('Content-Length: ' . filesize("$dir/$file"));
+        readfile("$dir/$file");
+        exit;
+
+    case 'save':
+        if ($method !== 'POST') {
+            files_fail(405, 'Нужен POST.');
+        }
+        $name = files_name($_GET['name'] ?? '');
+        $overwrite = ($_GET['overwrite'] ?? '') === '1';
+        $declared = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
+        if ($declared > FILES_MAX_BYTES) {
+            files_fail(413, 'Файл больше 512 МБ.');
+        }
+        $tmp = "$dir/upload." . bin2hex(random_bytes(6));
+        $in = fopen('php://input', 'rb');
+        $out = fopen($tmp, 'wb');
+        $size = ($in && $out) ? stream_copy_to_stream($in, $out, FILES_MAX_BYTES + 1) : false;
+        if ($in) fclose($in);
+        if ($out) fclose($out);
+        if ($size === false || $size === 0) {
+            @unlink($tmp);
+            files_fail(400, $declared > 0
+                ? 'Сервер не передал PHP содержимое файла. Скорее всего, файл больше post_max_size в настройках PHP — увеличьте post_max_size и upload_max_filesize.'
+                : 'Пустой файл.');
+        }
+        if ($size > FILES_MAX_BYTES) {
+            @unlink($tmp);
+            files_fail(413, 'Файл больше 512 МБ.');
+        }
+        $head = (string)file_get_contents($tmp, false, null, 0, 4);
+        if ($head !== "PK\x03\x04" && $head !== "PK\x05\x06" && ($head === '' || $head[0] !== '{')) {
+            @unlink($tmp);
+            files_fail(400, 'Это не файл AI-Figma (.figcraft).');
+        }
+        $saved = files_index($dir, static function (array &$index) use ($dir, $name, $overwrite, $tmp, $size) {
+            if (isset($index[$name]) && !$overwrite) {
+                return ['exists' => true];
+            }
+            if (!isset($index[$name]) && count($index) >= FILES_MAX_COUNT) {
+                return ['full' => true];
+            }
+            $file = $index[$name]['file'] ?? (bin2hex(random_bytes(16)) . '.figcraft');
+            if (!rename($tmp, "$dir/$file")) {
+                return ['error' => true];
+            }
+            $index[$name] = ['file' => $file, 'size' => $size, 'modified' => time()];
+            return ['modified' => $index[$name]['modified']];
+        });
+        if (!empty($saved['exists']) || !empty($saved['full']) || !empty($saved['error'])) {
+            @unlink($tmp);
+        }
+        if (!empty($saved['exists'])) {
+            files_fail(409, "Файл «{$name}» уже есть.", ['exists' => true]);
+        }
+        if (!empty($saved['full'])) {
+            files_fail(507, 'Слишком много файлов. Удалите ненужные.');
+        }
+        if (!empty($saved['error'])) {
+            files_fail(500, 'Не удалось записать файл на сервер. Проверьте права PHP на ' . $dir);
+        }
+        files_ok(['name' => $name, 'size' => $size, 'modified' => $saved['modified']]);
+
+    case 'rename':
+        if ($method !== 'POST') {
+            files_fail(405, 'Нужен POST.');
+        }
+        $body = files_json_body();
+        $name = files_name($body['name'] ?? '');
+        $to = files_name($body['to'] ?? '');
+        $r = files_index($dir, static function (array &$index) use ($name, $to) {
+            if (!isset($index[$name])) return 'missing';
+            if ($name === $to) return 'ok';
+            if (isset($index[$to])) return 'exists';
+            $index[$to] = $index[$name];
+            unset($index[$name]);
+            return 'ok';
+        });
+        if ($r === 'missing') files_fail(404, "Файла «{$name}» нет.");
+        if ($r === 'exists') files_fail(409, "Файл «{$to}» уже есть.", ['exists' => true]);
+        files_ok(['name' => $to]);
+
+    case 'delete':
+        if ($method !== 'POST') {
+            files_fail(405, 'Нужен POST.');
+        }
+        $name = files_name(files_json_body()['name'] ?? '');
+        $r = files_index($dir, static function (array &$index) use ($dir, $name) {
+            if (!isset($index[$name])) return false;
+            $file = (string)($index[$name]['file'] ?? '');
+            if (preg_match('/^[0-9a-f]{32}\.figcraft$/', $file) && is_file("$dir/$file")) {
+                @mkdir("$dir/.trash", 0770);
+                @rename("$dir/$file", "$dir/.trash/" . date('Ymd-His') . '-' . $file);
+            }
+            unset($index[$name]);
+            return true;
+        });
+        if (!$r) files_fail(404, "Файла «{$name}» нет.");
+        files_ok([]);
+
+    default:
+        files_fail(400, 'Неизвестное действие.');
+}

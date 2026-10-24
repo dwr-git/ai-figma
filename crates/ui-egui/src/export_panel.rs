@@ -320,6 +320,20 @@ pub(crate) fn export_layers(app: &mut FigApp, ids: &[NodeId], assets: bool) {
         [] => {}
         // The suggested name keeps only the file's own name (a layer's folders apply to folders).
         [one] => save_one(app, &[one.id], &one.setting, one.file.rsplit('/').next().unwrap_or(&one.file)),
+        // The browser has no folders to write into: each file is a download.
+        _ if app.services.downloads() => {
+            if let Some(r) = app.run("file.exportLayers", json!({"ids": ids, "assets": assets})) {
+                let files = r["files"].as_array().cloned().unwrap_or_default();
+                let mut n = 0;
+                for f in &files {
+                    let name = f["name"].as_str().unwrap_or("export").rsplit('/').next().unwrap_or("export").to_string();
+                    if let Some(bytes) = f["data"].as_str().and_then(decode) {
+                        n += usize::from(app.services.download(&name, &bytes));
+                    }
+                }
+                app.toast(trn("Exported {n} files", n, &[]));
+            }
+        }
         _ => {
             let ids = ids.to_vec();
             app.pick_folder(tr("Export"), move |app, dir| {
@@ -337,12 +351,33 @@ pub(crate) fn save_one(app: &mut FigApp, ids: &[NodeId], setting: &ExportSetting
     let ext = setting.format.ext();
     let mut params = setting_params(setting);
     params["ids"] = json!(ids);
+    // The browser: no save dialog, the file is a download.
+    if app.services.downloads() {
+        let name = if file.to_ascii_lowercase().ends_with(&format!(".{ext}")) { file.to_string() } else { format!("{file}.{ext}") };
+        if let Some(bytes) = app.run("file.export", params).and_then(|r| r["data"].as_str().and_then(decode))
+            && app.services.download(&name, &bytes)
+        {
+            app.toast(trf("Exported {name}", &[("name", &name)]));
+        }
+        return;
+    }
     app.pick_save(tr("Export"), file, &[ext], move |app, p| {
         params["path"] = json!(p.to_string_lossy());
         if app.run("file.export", params).is_some() {
             app.toast(trf("Exported {name}", &[("name", &p.file_name().map(|f| f.to_string_lossy().to_string()).unwrap_or_default())]));
         }
     });
+}
+
+/// A file's base64 `data` from an export command, decoded (`None`: it wasn't base64).
+fn decode(data: &str) -> Option<Vec<u8>> {
+    use base64::Engine as _;
+    base64::engine::general_purpose::STANDARD.decode(data.trim()).ok()
+}
+
+/// The decoded base64 `data` of an export command's result (`None`: it has none).
+pub(crate) fn decode_data(r: &Value) -> Option<Vec<u8>> {
+    r["data"].as_str().and_then(decode)
 }
 
 /// The file name a one-off export of `ids` suggests: the first layer's name (or `fallback`) with

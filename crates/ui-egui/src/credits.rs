@@ -324,7 +324,8 @@ fn table_height(ui: &egui::Ui, rows: usize) -> f32 {
 }
 
 fn link(ui: &mut egui::Ui, c: &Contributor, names: NameMode) -> egui::Response {
-    ui.hyperlink_to(c.name(names), format!("https://github.com/{}", c.login)).on_hover_text(c.summary())
+    // AI-Figma works in a closed network: names only, no links out.
+    ui.label(c.name(names)).on_hover_text(c.summary())
 }
 
 fn text_width(ui: &egui::Ui, text: &str, font: &egui::FontId) -> f32 {

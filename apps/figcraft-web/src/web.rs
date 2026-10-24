@@ -7,8 +7,32 @@ use wasm_bindgen::JsCast as _;
 const CANVAS_ID: &str = "figcraft_canvas";
 const LOADING_ID: &str = "figcraft_loading";
 
+/// Where the page keeps the preferences (the browser's storage for this site).
+const PREFS_KEY: &str = "aifigma.prefs";
+
+/// The preferences kept in the browser, or AI-Figma's first-run ones: the Brand theme and Russian.
+fn load_prefs() -> figcraft_engine::Prefs {
+    let kept = web_sys::window()
+        .and_then(|w| w.local_storage().ok().flatten())
+        .and_then(|s| s.get_item(PREFS_KEY).ok().flatten())
+        .and_then(|text| serde_json::from_str::<figcraft_engine::Prefs>(&text).ok());
+    kept.unwrap_or_else(|| figcraft_engine::Prefs { theme: "brand".into(), language: "ru".into(), ..Default::default() })
+}
+
+/// Keep `prefs` in the browser (private windows and full storage keep nothing: the next visit
+/// starts with the first-run preferences, which is all that is lost).
+fn store_prefs(prefs: &figcraft_engine::Prefs) {
+    let Ok(text) = serde_json::to_string(prefs) else { return };
+    if let Some(storage) = web_sys::window().and_then(|w| w.local_storage().ok().flatten()) {
+        let _ = storage.set_item(PREFS_KEY, &text);
+    }
+}
+
 pub fn start() {
     eframe::WebLogger::init(log::LevelFilter::Info).ok();
+    if let Err(e) = crate::bridge::install() {
+        log::error!("couldn't install window.aifigma: {e:?}");
+    }
     wasm_bindgen_futures::spawn_local(async {
         let Some(document) = web_sys::window().and_then(|w| w.document()) else {
             log::error!("no document");
@@ -36,6 +60,8 @@ pub fn start() {
                     }
                     let reduce_motion = web_sys::window().and_then(|w| w.match_media("(prefers-reduced-motion: reduce)").ok().flatten());
                     let mut session = Session::new();
+                    session.prefs = load_prefs();
+                    crate::bridge::connect(cc.egui_ctx.clone());
                     // Live sessions: the browser joins sessions a desktop app hosts; whatever arrives
                     // on the socket wakes the page for a frame.
                     let ctx = cc.egui_ctx.clone();
@@ -47,14 +73,17 @@ pub fn start() {
                         let link = js_sys::decode_uri_component(link).ok().and_then(|s| s.as_string()).unwrap_or_else(|| link.to_string());
                         figcraft_ui_egui::live::open_invite(&mut fig, &link);
                     }
-                    Ok(Box::new(WebShell { fig }))
+                    let kept = fig.session.prefs.clone();
+                    Ok(Box::new(WebShell { fig, kept, frames: 0 }))
                 }),
             )
             .await;
         if let Some(el) = document.get_element_by_id(LOADING_ID) {
             match result {
                 Ok(()) => el.remove(),
-                Err(e) => el.set_inner_html(&format!("<p>FigCraft failed to start: {e:?}</p><p>A browser with WebGPU or WebGL2 is required.</p>")),
+                Err(e) => el.set_inner_html(&format!(
+                    "<p>AI-Figma не запустился: {e:?}</p><p>Нужен браузер с WebGPU или WebGL2: свежий Chrome, Edge, Firefox или Safari.</p>"
+                )),
             }
         }
     });
@@ -66,12 +95,25 @@ fn query() -> String {
 
 struct WebShell {
     fig: FigApp,
+    /// The preferences as last kept in the browser.
+    kept: figcraft_engine::Prefs,
+    frames: u32,
 }
+
+/// How often (in frames) the preferences are compared with the kept ones.
+const PREFS_CHECK_FRAMES: u32 = 30;
 
 impl eframe::App for WebShell {
     // `FigApp::ui` runs its own per-frame logic first (fonts, theme), like the desktop app.
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        crate::bridge::deliver(&mut self.fig);
         self.fig.ui(ui);
+        crate::bridge::poll_replies();
+        self.frames = self.frames.wrapping_add(1);
+        if self.frames % PREFS_CHECK_FRAMES == 0 && self.fig.session.prefs != self.kept {
+            self.kept = self.fig.session.prefs.clone();
+            store_prefs(&self.kept);
+        }
     }
 }
 
@@ -115,7 +157,20 @@ impl Services for WebServices {
     fn clipboard_set_png(&mut self, w: u32, h: u32, rgba: &[u8]) {
         figcraft_ui_egui::egui_copy_png(&self.ctx, w, h, rgba);
     }
+    /// Save and Save as go to the page, which keeps files in a folder on its server.
+    fn save_to_page(&mut self, save_as: bool) -> bool {
+        crate::bridge::notify("save", serde_json::json!({"saveAs": save_as}));
+        true
+    }
+    fn save_prefs(&mut self, prefs: &figcraft_engine::Prefs) {
+        store_prefs(prefs);
+    }
     fn open_url(&mut self, url: &str) {
+        // `studio:help`: the page's assistant panel.
+        if let Some(what) = url.strip_prefix("studio:") {
+            crate::bridge::notify(what, serde_json::json!({}));
+            return;
+        }
         let Some(window) = web_sys::window() else { return };
         if let Err(e) = window.open_with_url_and_target_and_features(url, "_blank", "noopener,noreferrer") {
             log::error!("couldn't open {url}: {e:?}");

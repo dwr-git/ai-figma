@@ -42,7 +42,7 @@ pub fn specs() -> Vec<CommandSpec> {
         spec!(
             "file.open",
             "Open",
-            "{path | data (base64) + name (tells the format; opens as a new unsaved document), variables? (REST: the local variables JSON as an object, JSON text or a path; default `<name>.variables.json` or `variables.json` next to the file)} (.figcraft, .json: FigCraft or REST API file JSON, .fig (best effort), .svg, .png, .jpg …); REST and .fig imports return `warnings`; a file opened anew returns `summary` {name, pages, layers, images} (one that was already open just returns its `index`)",
+            "{path | data (base64) + name (tells the format; opens as a new unsaved document), variables? (REST: the local variables JSON as an object, JSON text or a path; default `<name>.variables.json` or `variables.json` next to the file)} (.figcraft, .json: AI-Figma or REST API file JSON, .fig (best effort), .svg, .png, .jpg …); REST and .fig imports return `warnings`; a file opened anew returns `summary` {name, pages, layers, images} (one that was already open just returns its `index`)",
             false,
             open
         ),
@@ -59,6 +59,20 @@ pub fn specs() -> Vec<CommandSpec> {
             "{path?} (programmatic saves need a path the first time); a .fig path writes an experimental export copy of the shown document with `warnings`, keeping the native path, unsaved changes and version preview",
             false,
             save
+        ),
+        spec!(
+            "file.pageSnapshot",
+            "Snapshot for the page",
+            "{}  the file in front as .figcraft data for a web page that keeps files itself (AI-Figma's server folder): {name, page (the name the page stored it under, if any), dirty, bytes, data (base64), token}; once stored, pass `token` to `file.pageSaved`",
+            false,
+            page_snapshot
+        ),
+        spec!(
+            "file.pageSaved",
+            "Saved by the page",
+            "{name, token?}  the page stored the file in front as `name` (from `file.pageSnapshot` with `token`, or just opened from there, without one): it remembers that name and counts as saved, unless it changed after the snapshot",
+            false,
+            page_saved
         ),
         spec!(
             "file.saveAs",
@@ -914,6 +928,50 @@ fn save_as(s: &mut Session, p: &Value) -> Result<Value> {
             Err(EngineError::Disabled("file.saveAs".into(), "pass `path`".into()))
         }
     }
+}
+
+/// Where a file the page keeps lives, as the file's path: `page:<name>`.
+const PAGE_PREFIX: &str = "page:";
+
+/// The token of a page snapshot: the tab and the document it encoded (a later edit makes a new
+/// document, so a stored copy of an older one doesn't count as saving it).
+fn page_token(ds: &DocState) -> String {
+    format!("{}:{:x}", ds.uid, Arc::as_ptr(&ds.doc) as usize)
+}
+
+fn page_snapshot(s: &mut Session, _p: &Value) -> Result<Value> {
+    let i = crate::branches::file_tab(s);
+    let ds = s.docs.get(i).ok_or(EngineError::NoDocument)?;
+    let bytes = FileSnapshot::of(ds).encode()?;
+    let page = ds.path.as_deref().and_then(|p| p.strip_prefix(PAGE_PREFIX));
+    Ok(json!({
+        "name": ds.doc.name,
+        "page": page,
+        "dirty": ds.is_dirty(),
+        "bytes": bytes.len(),
+        "data": base64::engine::general_purpose::STANDARD.encode(&bytes),
+        "token": page_token(ds),
+    }))
+}
+
+fn page_saved(s: &mut Session, p: &Value) -> Result<Value> {
+    let cmd = "file.pageSaved";
+    let name: String = string(p, "name").ok_or_else(|| bad(cmd, "`name` required"))?.trim().chars().take(200).collect();
+    if name.is_empty() {
+        return Err(bad(cmd, "`name` is empty"));
+    }
+    let token = string(p, "token");
+    let i = crate::branches::file_tab(s);
+    let ds = s.docs.get_mut(i).ok_or(EngineError::NoDocument)?;
+    ds.path = Some(format!("{PAGE_PREFIX}{name}"));
+    let current = token.as_deref().is_none_or(|t| t == page_token(ds));
+    if current {
+        ds.mark_saved();
+        ds.revision += 1;
+        let uid = ds.uid;
+        branch_tabs_saved(s, uid);
+    }
+    Ok(json!({"name": name, "saved": current}))
 }
 
 /// Encode `ids` (or the page) in `format` at `scale`.

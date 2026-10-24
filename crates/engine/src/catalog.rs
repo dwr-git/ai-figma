@@ -125,6 +125,7 @@ pub static MENU: &[MenuItem] = &[
     m!("View", SEP, ""),
     m!("View", "Previous page", "view.prevPage"),
     m!("View", "Next page", "view.nextPage"),
+    m!("View/Theme", "Brand", "view.themeBrand"),
     m!("View/Theme", "Light", "view.themeLight"),
     m!("View/Theme", "Dark", "view.themeDark"),
     m!("View/Theme", "Follow system", "view.themeSystem"),
@@ -262,7 +263,7 @@ pub static MENU: &[MenuItem] = &[
     m!("Help", "Getting started", "help.gettingStarted"),
     m!("Help", "Keyboard shortcuts", "help.shortcuts"),
     m!("Help", "Help page", "help.page"),
-    m!("Help", "About FigCraft", "help.about"),
+    m!("Help", "About AI-Figma", "help.about"),
     // Toolbar
     m!("Tools", "Move", "tool.move"),
     m!("Tools", "Scale", "tool.scale"),

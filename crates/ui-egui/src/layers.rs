@@ -132,6 +132,19 @@ pub fn rail(app: &mut FigApp, ui: &mut Ui) {
         }
         y += 60.0;
     }
+    // AI-Figma in the browser: the house at the foot of the rail leads back to the site it lives on
+    // (the page's `homeUrl`, one level up by default).
+    if cfg!(target_arch = "wasm32") && r.height() > y - r.min.y + 56.0 {
+        let hr = Rect::from_center_size(pos2(r.center().x, r.max.y - 26.0), vec2(36.0, 32.0));
+        let hresp = ui.interact(hr, ui.id().with("rail_home"), Sense::click()).tip(tr("To the site"));
+        if hresp.hovered() {
+            ui.painter().rect_filled(hr, CornerRadius::same(6), t.hover);
+        }
+        icons::paint(ui.painter(), Rect::from_center_size(hr.center(), vec2(18.0, 18.0)), Icon::Home, t.icon);
+        if hresp.clicked() {
+            app.services.open_url("studio:home");
+        }
+    }
 }
 
 pub fn left_panel(app: &mut FigApp, ui: &mut Ui) {
