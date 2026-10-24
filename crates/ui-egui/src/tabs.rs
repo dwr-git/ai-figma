@@ -103,10 +103,12 @@ pub fn tab_bar(app: &mut FigApp, ui: &mut Ui) {
         let rect = ui.max_rect();
         let buttons_w = if app.ui.title_bar == TitleBar::Custom { window_buttons(app, ui, rect) } else { 0.0 };
         let mut x = rect.min.x + if app.ui.title_bar == TitleBar::Inset { 76.0 } else { 8.0 };
-        // Home.
+        // Home. AI-Figma in the browser: the house leads back to the site the editor lives on (the
+        // page's `homeUrl`, one level up), as in the other AI- apps; files are in «Мои файлы».
+        let web = cfg!(target_arch = "wasm32");
         let hr = Rect::from_min_size(pos2(x, rect.min.y), vec2(44.0, HEIGHT));
-        let hresp = ui.interact(hr, ui.id().with("home"), Sense::click()).tip(tr("Home"));
-        let home_active = (app.ui.home || !app.has_files()) && app.ui.present.is_none();
+        let hresp = ui.interact(hr, ui.id().with("home"), Sense::click()).tip(if web { tr("To the site") } else { tr("Home") });
+        let home_active = !web && (app.ui.home || !app.has_files()) && app.ui.present.is_none();
         crate::a11y::tab(&hresp, tr("Home"), home_active);
         if home_active {
             ui.painter().rect_filled(hr, CornerRadius::ZERO, t.tab_active);
@@ -114,7 +116,9 @@ pub fn tab_bar(app: &mut FigApp, ui: &mut Ui) {
             ui.painter().rect_filled(hr, CornerRadius::ZERO, t.hover);
         }
         icons::paint(ui.painter(), Rect::from_center_size(hr.center(), vec2(16.0, 16.0)), Icon::Home, t.icon);
-        if hresp.clicked() {
+        if hresp.clicked() && web {
+            app.services.open_url("studio:home");
+        } else if hresp.clicked() {
             pause_present(app);
             app.ui.home = true;
         }
@@ -340,15 +344,27 @@ pub fn tab_bar(app: &mut FigApp, ui: &mut Ui) {
         }
         // Right side: theme toggle (left of the window buttons).
         let theme_r = Rect::from_center_size(pos2(rect.max.x - buttons_w - 24.0, rect.center().y), vec2(28.0, 28.0));
-        let tresp = ui.interact(theme_r, ui.id().with("theme"), Sense::click()).tip(tr("Toggle light/dark theme"));
+        let tresp = ui.interact(theme_r, ui.id().with("theme"), Sense::click()).tip(tr("Theme"));
         if tresp.hovered() {
             ui.painter().rect_filled(theme_r, CornerRadius::same(5), t.hover);
         }
         icons::paint(ui.painter(), theme_r.shrink(7.0), if app.ui.dark { Icon::Sun } else { Icon::Moon }, t.icon);
-        if tresp.clicked() {
-            let cmd = if app.ui.dark { "view.themeLight" } else { "view.themeDark" };
-            app.run(cmd, json!({}));
-        }
+        // A list of themes (Brand first), as Preferences and View ▸ Theme offer.
+        crate::right::menu_popup(&tresp).show(|ui| {
+            let current = app.session.prefs.theme.clone();
+            for (id, label, cmd) in [
+                ("brand", tr("Brand"), "view.themeBrand"),
+                ("light", tr("Light"), "view.themeLight"),
+                ("dark", tr("Dark"), "view.themeDark"),
+                ("system", tr("System"), "view.themeSystem"),
+            ] {
+                let mark = if current == id { "\u{2713}  " } else { "     " };
+                if crate::right::menu_item(ui, &format!("{mark}{label}"), "") {
+                    app.run(cmd, json!({}));
+                    ui.close();
+                }
+            }
+        });
         // Only the free space drags the window. A full-bar drag target steals tab drags.
         if app.ui.title_bar != TitleBar::Native && x + 34.0 < theme_r.min.x {
             let free = Rect::from_min_max(pos2(x + 34.0, rect.min.y), pos2(theme_r.min.x, rect.max.y));

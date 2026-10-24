@@ -1195,6 +1195,28 @@ impl FigApp {
         (w != width).then_some(w)
     }
 
+    /// New files the app named itself ("Untitled", "Page 1") take those names in the interface
+    /// language while nothing has been done to them (AI-Figma's web page calls this each frame).
+    pub fn localize_fresh_files(&mut self) {
+        let names = [("Untitled", i18n::tr("Untitled")), ("Untitled board", i18n::tr("Untitled board"))];
+        let page = i18n::tr("Page 1");
+        for ds in &mut self.session.docs {
+            if ds.path.is_some() || ds.is_dirty() {
+                continue;
+            }
+            let Some((_, to)) = names.iter().find(|(from, to)| ds.doc.name == *from && from != to) else { continue };
+            let doc = std::sync::Arc::make_mut(&mut ds.doc);
+            doc.name = (*to).to_string();
+            if let [only] = doc.pages[..]
+                && let Some(n) = doc.node_mut(only)
+                && n.name == "Page 1"
+            {
+                n.name = page.to_string();
+            }
+            ds.mark_saved();
+        }
+    }
+
     pub fn save_as_dialog(&mut self) {
         if self.session.doc().is_ok() && self.services.save_to_page(true) {
             return;

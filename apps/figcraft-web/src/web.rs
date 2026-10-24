@@ -107,6 +107,7 @@ impl eframe::App for WebShell {
     // `FigApp::ui` runs its own per-frame logic first (fonts, theme), like the desktop app.
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         crate::bridge::deliver(&mut self.fig);
+        self.fig.localize_fresh_files();
         self.fig.ui(ui);
         crate::bridge::poll_replies();
         self.frames = self.frames.wrapping_add(1);

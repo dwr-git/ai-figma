@@ -263,6 +263,7 @@
     stop: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>',
     // Мозг — контур из набора Tabler Icons (MIT), нарисованный градиентом #st-brain-grad.
     brain: '<svg class="st-brain-svg" viewBox="0 0 24 24" fill="none" stroke="url(#st-brain-grad)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 13a3.5 3.5 0 0 0 -3.5 3.5v1a3.5 3.5 0 0 0 7 0v-1.8"/><path d="M8.5 13a3.5 3.5 0 0 1 3.5 3.5v1a3.5 3.5 0 0 1 -7 0v-1.8"/><path d="M17.5 16a3.5 3.5 0 0 0 0 -7h-.5"/><path d="M19 9.3v-2.8a3.5 3.5 0 0 0 -7 0"/><path d="M6.5 16a3.5 3.5 0 0 1 0 -7h.5"/><path d="M5 9.3v-2.8a3.5 3.5 0 0 1 7 0v10"/></svg>',
+    x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
     folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
     file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg>',
     bolt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3l-8 11h6l-1 7 8-11h-6z"/></svg>',
@@ -308,7 +309,7 @@
       <div class="st-files-box">
         <header class="st-files-head">
           <b>Мои файлы</b><small data-ref="filesWho"></small>
-          <button class="st-icon-btn" data-ref="filesClose" title="Закрыть (Esc)" aria-label="Закрыть">${ICON.close}</button>
+          <button class="st-icon-btn" data-ref="filesClose" title="Закрыть (Esc)" aria-label="Закрыть">${ICON.x}</button>
         </header>
         <div class="st-files-tools">
           <input data-ref="filesSearch" type="search" placeholder="Поиск по имени" aria-label="Поиск по имени">
@@ -357,7 +358,7 @@
 
   const HINTS = {
     advice: 'Объясняю и подсказываю, ничего не меняю в документе.',
-    act: 'Делаю сам: рисую, крашу, выравниваю, нажимаю команды. Всё отменяется Ctrl+Z.',
+    act: 'Делаю сам: собираю экраны и компоненты, включаю автолейаут, крашу, выравниваю. Всё отменяется Ctrl+Z.',
   };
   // Модель видит всю переписку. Если раньше она писала «я в режиме Совет», то по инерции продолжает
   // так отвечать и после переключения. Поэтому смена режима отмечается прямо в разговоре,
@@ -841,7 +842,7 @@
   };
 
   // Окно с одним полем: имя файла.
-  function ask(title, value, note) {
+  function askName(title, value, note) {
     return new Promise((resolve) => {
       const box = $('ask');
       $('askTitle').textContent = title;
@@ -971,7 +972,7 @@
         let overwrite = !!name && !saveAs;
         if (!name || saveAs) {
           if (quiet) return false;
-          name = await ask(saveAs ? 'Сохранить как' : 'Сохранить на сервере', snap.page || snap.name, 'Файл появится в «Моих файлах».');
+          name = await askName(saveAs ? 'Сохранить как' : 'Сохранить на сервере', snap.page || snap.name, 'Файл появится в «Моих файлах».');
           if (!name) return false;
           name = name.replace(/\.figcraft$/i, '').trim();
           if (!list.length) await refresh().catch(() => {});
@@ -998,7 +999,7 @@
       return new Promise((resolve) => { resolve(window.confirm(text)); });
     }
     async function rename(name) {
-      const to = await ask('Переименовать', name);
+      const to = await askName('Переименовать', name);
       if (!to || to === name) return;
       try {
         await json(await fetch(api('action=rename'), { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, to }) }));
