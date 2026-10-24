@@ -7,9 +7,10 @@
 //   POST files.php?action=rename  {name, to}   → {ok}
 //   POST files.php?action=delete  {name}       → {ok}  (файл уходит в корзину .trash/ папки пользователя)
 //
-// Где лежат файлы: AI_FIGMA_DATA_DIR из .env, иначе папка data/ai-figma рядом с корнем сайта
-// (/app/data/ai-figma при корне /app/src — вне корня, nginx её не отдаёт), а если туда нельзя
-// писать — ai-figma-data рядом с папкой приложения (закройте её в nginx: см. nginx.conf.example).
+// Где лежат файлы: AI_FIGMA_DATA_DIR из .env, иначе storage/ai-figma рядом с корнем сайта
+// (/app/storage/ai-figma при корне /app/src — вне корня, nginx её не отдаёт; создаётся сама),
+// потом data/ai-figma, а если никуда нельзя писать — ai-figma-data рядом с папкой приложения
+// (закройте её в nginx: см. nginx.conf.example).
 // Имена файлов на диске случайные, список — в index.json папки пользователя.
 
 declare(strict_types=1);
@@ -67,11 +68,20 @@ function files_root(): string
     if ($env !== '') {
         return rtrim($env, '/');
     }
+    // Рядом с корнем сайта, но не внутри него: сначала папка storage (как /app/storage при корне
+    // /app/src — туда же nginx пишет журналы), потом data. Берётся первая, куда PHP может писать.
     $docRoot = rtrim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''), '/');
-    if ($docRoot !== '' && is_dir(dirname($docRoot))) {
-        $outside = dirname($docRoot) . '/data/ai-figma';
-        if (is_dir($outside) ? is_writable($outside) : (is_dir(dirname($outside)) ? is_writable(dirname($outside)) : is_writable(dirname($docRoot)))) {
-            return $outside;
+    $parent = $docRoot !== '' ? dirname($docRoot) : '';
+    $candidates = [];
+    if ($parent !== '' && $parent !== '/' && is_dir("$parent/storage")) {
+        $candidates[] = "$parent/storage/ai-figma";
+    }
+    if ($parent !== '' && $parent !== '/') {
+        $candidates[] = "$parent/data/ai-figma";
+    }
+    foreach ($candidates as $dir) {
+        if ((is_dir($dir) && is_writable($dir)) || (!is_dir($dir) && @mkdir($dir, 0770, true))) {
+            return $dir;
         }
     }
     return dirname(__DIR__, 2) . '/ai-figma-data';
