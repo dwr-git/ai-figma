@@ -56,7 +56,7 @@ mkdir -p "$WORK/$NAME/app"
 cp -R "$BOOT/." "$WORK/$NAME/"
 # Fonts the app fetches on demand from ./fonts/ (craft-fonts builds only).
 if [[ -d "$APP/fonts" ]]; then cp -R "$APP/fonts" "$WORK/$NAME/"; fi
-# The app's glue by its content hash, named in parts.txt (`loader …`): a fixed name could come
+# The app's glue by its content hash, named in parts.txt (`# loader …`): a fixed name could come
 # from the browser's cache, or stay behind on the server, and an old glue can't start a new wasm.
 # The fixed name stays too, for a page from before (its boot module imports that).
 GLUE_NAME="ai-figma-${STEM#figcraft-web-}.js"
@@ -67,7 +67,7 @@ cp "$GLUE" "$WORK/$NAME/app/ai-figma.js"
 gzip -9 -n -c "$WASM" | (cd "$WORK/$NAME/app" && split -b "$PART_BYTES" - "$PART_STEM.part-")
 {
   echo "ai-figma-parts 1"
-  echo "loader $GLUE_NAME"
+  echo "# loader $GLUE_NAME"
   for part in "$WORK/$NAME/app/$PART_STEM".part-*; do basename "$part"; done
 } >"$WORK/$NAME/app/parts.txt"
 size() { wc -c <"$1" | tr -d ' '; }
