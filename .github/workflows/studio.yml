@@ -29,6 +29,9 @@ jobs:
     env:
       TRUNK_VERSION: 0.21.14
       AI_FIGMA_BUILD: ${{ github.run_number }}
+      # Закрытый контур: никакого внешнего сервера совместной работы по умолчанию
+      # (у исходного проекта это публичный сервер в интернете). Свой можно указать в настройках.
+      FIGCRAFT_DEFAULT_SERVER: ""
       # Шрифты для текста в макетах (Inter и др., открытые, OFL) — в браузере нет системных шрифтов.
       # Та же версия, что у исходного проекта (FigCraft, release.yml); попадают внутрь приложения.
       CRAFT_FONTS_REF: 43913056ce82a3fdad0ef69f6b88d1dc922a8104
@@ -69,6 +72,7 @@ jobs:
       - name: Собрать сайт
         run: |
           export CRAFT_FONTS_DIR="$GITHUB_WORKSPACE/craft-fonts"
+          export FIGCRAFT_DEFAULT_SERVER=
           studio/build/package.sh
 
       - name: Сохранить zip в Artifacts

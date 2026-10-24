@@ -75,8 +75,8 @@ impl std::fmt::Display for FormatError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             FormatError::Io(e) => write!(f, "{e}"),
-            FormatError::Corrupt(e) => write!(f, "not a valid FigCraft file: {e}"),
-            FormatError::Newer(v) => write!(f, "this file was saved by a newer FigCraft (format version {v})"),
+            FormatError::Corrupt(e) => write!(f, "not a valid AI-Figma file: {e}"),
+            FormatError::Newer(v) => write!(f, "this file was saved by a newer AI-Figma (format version {v})"),
         }
     }
 }
