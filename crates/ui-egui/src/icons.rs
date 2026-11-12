@@ -1190,7 +1190,7 @@ fn draw(p: &P, icon: Icon) {
             p.poly(&[(10.5, 5.5), (13.0, 8.0), (10.5, 10.5)], false);
         }
         Logo => {
-            // AI-Figma's mark: a rounded frame around four tiles (the frame the AI- apps share).
+            // AI Макеты's mark: a rounded frame around four tiles (the frame the AI- apps share).
             p.painter.rect_stroke(
                 Rect::from_min_max(p.raw(2.0, 2.0), p.raw(14.0, 14.0)),
                 egui::CornerRadius::same((2.5 * p.s).round().clamp(0.0, 255.0) as u8),

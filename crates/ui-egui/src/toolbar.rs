@@ -310,7 +310,7 @@ fn help_button(app: &mut FigApp, ui: &mut Ui, canvas: Rect, t: &Tokens) {
             (tr("Getting started"), "help.gettingStarted"),
             (tr("Keyboard shortcuts"), "help.shortcuts"),
             (tr("Help page"), "help.page"),
-            (tr("About AI-Figma"), "help.about"),
+            (tr("About AI Макеты"), "help.about"),
         ] {
             if crate::right::menu_item(ui, l, crate::shortcuts::shortcut(c).unwrap_or("")) {
                 app.run(c, json!({}));

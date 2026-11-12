@@ -7,7 +7,7 @@ use egui::{Color32, Context, FontData, FontDefinitions, FontFamily, FontId, Stro
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Tokens {
     pub dark: bool,
-    /// AI-Figma's Brand theme: dark navy panels, the brand's blue-violet accent and solid black
+    /// AI Макеты's Brand theme: dark navy panels, the brand's blue-violet accent and solid black
     /// menus, popups and windows with a strong shadow.
     pub brand: bool,
     pub bg: Color32,
@@ -271,7 +271,7 @@ impl Tokens {
         }
     }
 
-    /// AI-Figma's Brand theme: the brand gradient's navy (#0a0a0f → #1a1a2e → #16213e) for the
+    /// AI Макеты's Brand theme: the brand gradient's navy (#0a0a0f → #1a1a2e → #16213e) for the
     /// panels and canvas, the brand's blue-violet (#667eea → #764ba2) for the accent, and solid
     /// black menus and windows.
     pub fn brand() -> Self {
@@ -548,16 +548,16 @@ pub fn brand(size: f32) -> FontId {
     FontId::new(size, FontFamily::Name("brand".into()))
 }
 
-/// The two-tone wordmark used in the home sidebar and About window: "AI-" in the accent, "Figma".
+/// The two-tone wordmark used in the home sidebar and About window: "AI " in the accent, "Макеты".
 pub fn paint_wordmark(painter: &egui::Painter, left_center: egui::Pos2, size: f32, t: &Tokens) {
     let font = brand(size);
-    let ai = painter.layout_no_wrap("AI-".into(), font.clone(), t.accent_text);
+    let ai = painter.layout_no_wrap("AI ".into(), font.clone(), t.accent_text);
     let ai_width = ai.size().x;
     painter.galley(egui::pos2(left_center.x, left_center.y - ai.size().y / 2.0), ai, t.accent_text);
-    painter.text(egui::pos2(left_center.x + ai_width, left_center.y), egui::Align2::LEFT_CENTER, "Figma", font, t.text);
+    painter.text(egui::pos2(left_center.x + ai_width, left_center.y), egui::Align2::LEFT_CENTER, "Макеты", font, t.text);
 }
 
-/// AI-Figma's icon, drawn in code: a thick rounded frame around four tiles (the frame the other
+/// AI Макеты's icon, drawn in code: a thick rounded frame around four tiles (the frame the other
 /// AI- apps' icons share), in the text colour on the panel.
 pub fn paint_app_icon(ui: &egui::Ui, rect: egui::Rect) {
     let t = Tokens::get(ui.ctx());

@@ -103,27 +103,30 @@ pub fn tab_bar(app: &mut FigApp, ui: &mut Ui) {
         let rect = ui.max_rect();
         let buttons_w = if app.ui.title_bar == TitleBar::Custom { window_buttons(app, ui, rect) } else { 0.0 };
         let mut x = rect.min.x + if app.ui.title_bar == TitleBar::Inset { 76.0 } else { 8.0 };
-        // Home. AI-Figma in the browser: the house leads back to the site the editor lives on (the
-        // page's `homeUrl`, one level up), as in the other AI- apps; files are in «Мои файлы».
+        // Home (desktop): the file browser, as the first tab. In the browser (AI Макеты) the house
+        // leads back to the site the editor lives on (the page's `homeUrl`, one level up) and sits at
+        // the right end of the bar, as in the other AI apps; files are in «Мои файлы».
         let web = cfg!(target_arch = "wasm32");
-        let hr = Rect::from_min_size(pos2(x, rect.min.y), vec2(44.0, HEIGHT));
-        let hresp = ui.interact(hr, ui.id().with("home"), Sense::click()).tip(if web { tr("To the site") } else { tr("Home") });
-        let home_active = !web && (app.ui.home || !app.has_files()) && app.ui.present.is_none();
-        crate::a11y::tab(&hresp, tr("Home"), home_active);
-        if home_active {
-            ui.painter().rect_filled(hr, CornerRadius::ZERO, t.tab_active);
-        } else if hresp.hovered() {
-            ui.painter().rect_filled(hr, CornerRadius::ZERO, t.hover);
+        if !web {
+            let hr = Rect::from_min_size(pos2(x, rect.min.y), vec2(44.0, HEIGHT));
+            let hresp = ui.interact(hr, ui.id().with("home"), Sense::click()).tip(tr("Home"));
+            let home_active = (app.ui.home || !app.has_files()) && app.ui.present.is_none();
+            crate::a11y::tab(&hresp, tr("Home"), home_active);
+            if home_active {
+                ui.painter().rect_filled(hr, CornerRadius::ZERO, t.tab_active);
+            } else if hresp.hovered() {
+                ui.painter().rect_filled(hr, CornerRadius::ZERO, t.hover);
+            }
+            icons::paint(ui.painter(), Rect::from_center_size(hr.center(), vec2(16.0, 16.0)), Icon::Home, t.icon);
+            if hresp.clicked() {
+                pause_present(app);
+                app.ui.home = true;
+            }
+            x += 44.0;
+            ui.painter().line_segment([pos2(x, rect.min.y), pos2(x, rect.max.y)], Stroke::new(1.0, t.border));
         }
-        icons::paint(ui.painter(), Rect::from_center_size(hr.center(), vec2(16.0, 16.0)), Icon::Home, t.icon);
-        if hresp.clicked() && web {
-            app.services.open_url("studio:home");
-        } else if hresp.clicked() {
-            pause_present(app);
-            app.ui.home = true;
-        }
-        x += 44.0;
-        ui.painter().line_segment([pos2(x, rect.min.y), pos2(x, rect.max.y)], Stroke::new(1.0, t.border));
+        // Room the house takes at the right end of the bar in the browser.
+        let site_w = if web { 32.0 } else { 0.0 };
         let document_tabs: Vec<usize> = app.session.docs.iter().enumerate().filter_map(|(i, d)| app.shows(d.uid).then_some(i)).collect();
         let now = ui.input(|input| input.time);
         let motion_id = ui.id().with("tab_motion");
@@ -145,7 +148,7 @@ pub fn tab_bar(app: &mut FigApp, ui: &mut Ui) {
             })
             .collect();
         // Leave the new-tab button, theme toggle, window controls and a draggable gap free.
-        let room = (rect.max.x - buttons_w - 70.0 - x - 34.0).max(0.0);
+        let room = (rect.max.x - buttons_w - 70.0 - site_w - x - 34.0).max(0.0);
         let present_pref: Vec<f32> = app.ui.presents.iter().map(present_tab_width).collect();
         let present_on = app.ui.present.as_ref().and(app.ui.present_active);
         let active_present = present_on.and_then(|id| app.ui.presents.iter().position(|p| p.id == id));
@@ -342,8 +345,21 @@ pub fn tab_bar(app: &mut FigApp, ui: &mut Ui) {
             app.run("file.new", json!({}));
             app.ui.home = false;
         }
-        // Right side: theme toggle (left of the window buttons).
-        let theme_r = Rect::from_center_size(pos2(rect.max.x - buttons_w - 24.0, rect.center().y), vec2(28.0, 28.0));
+        // Right side: the way back to the site (browser only) at the right end, the theme toggle left
+        // of it (and left of the window buttons).
+        if web {
+            let site_r = Rect::from_center_size(pos2(rect.max.x - buttons_w - 24.0, rect.center().y), vec2(28.0, 28.0));
+            let sresp = ui.interact(site_r, ui.id().with("home"), Sense::click()).tip(tr("To the site"));
+            crate::a11y::button(&sresp, tr("To the site"));
+            if sresp.hovered() {
+                ui.painter().rect_filled(site_r, CornerRadius::same(5), t.hover);
+            }
+            icons::paint(ui.painter(), site_r.shrink(6.0), Icon::Home, t.icon);
+            if sresp.clicked() {
+                app.services.open_url("studio:home");
+            }
+        }
+        let theme_r = Rect::from_center_size(pos2(rect.max.x - buttons_w - 24.0 - site_w, rect.center().y), vec2(28.0, 28.0));
         let tresp = ui.interact(theme_r, ui.id().with("theme"), Sense::click()).tip(tr("Theme"));
         if tresp.hovered() {
             ui.painter().rect_filled(theme_r, CornerRadius::same(5), t.hover);

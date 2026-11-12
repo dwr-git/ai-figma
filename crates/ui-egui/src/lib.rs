@@ -305,7 +305,7 @@ pub trait Services {
     /// Keep the preferences now (the installed plugins or their settings changed), as the app
     /// does when it quits.
     fn save_prefs(&mut self, _prefs: &figcraft_engine::Prefs) {}
-    /// The page keeps files somewhere of its own (AI-Figma: a folder on its server), so Save and
+    /// The page keeps files somewhere of its own (AI Макеты: a folder on its server), so Save and
     /// Save as go there instead of to a file on disk; true when the page took the save.
     fn save_to_page(&mut self, _save_as: bool) -> bool {
         false
@@ -1120,7 +1120,7 @@ impl FigApp {
                     }
                 }
                 "preview.close" => self.ui.preview = None,
-                // AI-Figma: help is the assistant panel beside the editor (the web page opens it).
+                // AI Макеты: help is the assistant panel beside the editor (the web page opens it).
                 "open.help" => self.services.open_url("studio:help"),
                 "layers.collapseAll" => layers::collapse_all(self),
                 "contextMenu" => self.ui.key_menu = true,
@@ -1196,7 +1196,7 @@ impl FigApp {
     }
 
     /// New files the app named itself ("Untitled", "Page 1") take those names in the interface
-    /// language while nothing has been done to them (AI-Figma's web page calls this each frame).
+    /// language while nothing has been done to them (AI Макеты's web page calls this each frame).
     pub fn localize_fresh_files(&mut self) {
         let names = [("Untitled", i18n::tr("Untitled")), ("Untitled board", i18n::tr("Untitled board"))];
         let page = i18n::tr("Page 1");

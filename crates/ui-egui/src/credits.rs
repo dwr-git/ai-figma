@@ -324,7 +324,7 @@ fn table_height(ui: &egui::Ui, rows: usize) -> f32 {
 }
 
 fn link(ui: &mut egui::Ui, c: &Contributor, names: NameMode) -> egui::Response {
-    // AI-Figma works in a closed network: names only, no links out.
+    // AI Макеты works in a closed network: names only, no links out.
     ui.label(c.name(names)).on_hover_text(c.summary())
 }
 

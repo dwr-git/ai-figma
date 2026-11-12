@@ -1,4 +1,4 @@
-//! AI-Figma in the browser (based on FigCraft).
+//! AI Макеты in the browser (based on FigCraft).
 //!
 //! Runs the same [`figcraft_ui_egui::FigApp`] as the desktop app through eframe's web runner
 //! (wgpu: WebGPU where available, WebGL2 otherwise). Build with `trunk build --release` from this

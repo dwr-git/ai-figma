@@ -1,5 +1,5 @@
 <?php
-// studio/api/files.php — файлы AI-Figma на вашем сервере. У каждого пользователя своя папка.
+// studio/api/files.php — файлы AI Макеты на вашем сервере. У каждого пользователя своя папка.
 //
 //   GET  files.php                          → {ok, user, files: [{name, size, modified}], limit}
 //   GET  files.php?action=load&name=…       → сам файл (.figcraft), application/octet-stream
@@ -212,7 +212,7 @@ switch ($action) {
         $head = (string)file_get_contents($tmp, false, null, 0, 4);
         if ($head !== "PK\x03\x04" && $head !== "PK\x05\x06" && ($head === '' || $head[0] !== '{')) {
             @unlink($tmp);
-            files_fail(400, 'Это не файл AI-Figma (.figcraft).');
+            files_fail(400, 'Это не файл AI Макеты (.figcraft).');
         }
         $saved = files_index($dir, static function (array &$index) use ($dir, $name, $overwrite, $tmp, $size) {
             if (isset($index[$name]) && !$overwrite) {

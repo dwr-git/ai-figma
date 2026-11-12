@@ -42,7 +42,7 @@ pub fn specs() -> Vec<CommandSpec> {
         spec!(
             "file.open",
             "Open",
-            "{path | data (base64) + name (tells the format; opens as a new unsaved document), variables? (REST: the local variables JSON as an object, JSON text or a path; default `<name>.variables.json` or `variables.json` next to the file)} (.figcraft, .json: AI-Figma or REST API file JSON, .fig (best effort), .svg, .png, .jpg …); REST and .fig imports return `warnings`; a file opened anew returns `summary` {name, pages, layers, images} (one that was already open just returns its `index`)",
+            "{path | data (base64) + name (tells the format; opens as a new unsaved document), variables? (REST: the local variables JSON as an object, JSON text or a path; default `<name>.variables.json` or `variables.json` next to the file)} (.figcraft, .json: AI Макеты or REST API file JSON, .fig (best effort), .svg, .png, .jpg …); REST and .fig imports return `warnings`; a file opened anew returns `summary` {name, pages, layers, images} (one that was already open just returns its `index`)",
             false,
             open
         ),
@@ -63,7 +63,7 @@ pub fn specs() -> Vec<CommandSpec> {
         spec!(
             "file.pageSnapshot",
             "Snapshot for the page",
-            "{}  the file in front as .figcraft data for a web page that keeps files itself (AI-Figma's server folder): {name, page (the name the page stored it under, if any), dirty, bytes, data (base64), token}; once stored, pass `token` to `file.pageSaved`",
+            "{}  the file in front as .figcraft data for a web page that keeps files itself (AI Макеты's server folder): {name, page (the name the page stored it under, if any), dirty, bytes, data (base64), token}; once stored, pass `token` to `file.pageSaved`",
             false,
             page_snapshot
         ),

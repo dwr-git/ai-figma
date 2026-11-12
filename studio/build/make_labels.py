@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Russian names for the assistant's command search.
 
-Reads AI-Figma's Russian catalog (crates/ui-egui/locales/ru.toml) and writes
+Reads AI Макеты's Russian catalog (crates/ui-egui/locales/ru.toml) and writes
 studio/web/ru-labels.json:
 
     {"text": {"Theme": "Тема", ...}, "id": {"view.themeBrand": "Фирменная тема", ...}}

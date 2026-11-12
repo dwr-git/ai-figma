@@ -1,6 +1,6 @@
 [package]
 name = "figcraft-web-boot"
-description = "Starts AI-Figma in the browser from compressed parts of its WebAssembly"
+description = "Starts AI Макеты in the browser from compressed parts of its WebAssembly"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

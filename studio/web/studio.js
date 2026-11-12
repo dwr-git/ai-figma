@@ -1,4 +1,4 @@
-/* AI-Figma — помощник и файлы на сервере внутри редактора интерфейсов.
+/* AI Макеты — помощник и файлы на сервере внутри редактора интерфейсов.
  *
  * Панель в браузере разговаривает с моделью через api/assistant.php, а действия
  * выполняет в самом редакторе через window.aifigma (apps/figcraft-web/src/bridge.rs):
@@ -805,7 +805,7 @@
     try {
       r = await post(payload);
     } catch (e) {
-      console.warn('AI-Figma: запрос к помощнику оборвался', e);
+      console.warn('AI Макеты: запрос к помощнику оборвался', e);
       if (!hasImages(payload)) throw new Error(await explainNoAnswer(took()));
       try { r = await post(withoutImages(payload)); } catch { throw new Error(await explainNoAnswer(took())); }
       tellImagesBlocked();
@@ -1354,7 +1354,7 @@
   // Быстрые задачи: те, что делаются командами, — сразу; остальные — через помощника.
   const TASKS = [
     ['Раскладка', [
-      ['Автолейаут из выделенного', 'Слои выстроятся в колонку с равными отступами (как Shift+A в Figma)', async () => { await needSel(); await PC.exec('layout.add', { direction: 'vertical' }); }],
+      ['Автолейаут из выделенного', 'Слои выстроятся в колонку с равными отступами (Shift+A)', async () => { await needSel(); await PC.exec('layout.add', { direction: 'vertical' }); }],
       ['Автолейаут в строку', 'То же, но слои встанут в ряд', async () => { await needSel(); await PC.exec('layout.add', { direction: 'horizontal' }); }],
       ['Выровнять по центру', 'По центру друг друга или своего фрейма', async () => { await needSel(); await PC.exec('align.hcenter'); await PC.exec('align.vcenter'); }],
       ['Распределить по горизонтали', 'Равные промежутки между выделенными', async () => { await needSel(3); await PC.exec('distribute.horizontal'); }],
@@ -1376,7 +1376,7 @@
         await PC.exec('command.batch', { label: 'Связать экраны', commands });
         toast(`Связано экранов: ${frames.length}. «Показать прототип» — чтобы пощёлкать.`);
       }],
-      ['Показать прототип', 'Во весь экран, как в Figma (Esc — выход)', async () => { await PC.exec('proto.present'); }],
+      ['Показать прототип', 'Во весь экран (Esc — выход)', async () => { await PC.exec('proto.present'); }],
     ]],
     ['Экспорт и файлы', [
       ['Экспорт выделенного в PNG ×2', 'Картинка в двойном размере — для сайтов и соцсетей', async () => { const ids = await needSel(); const r = await PC.exec('file.export', { ids, format: 'png', scale: 2 }); downloadB64('экспорт@2x.png', r.data, 'image/png'); }],

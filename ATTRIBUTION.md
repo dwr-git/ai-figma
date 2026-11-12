@@ -12,7 +12,8 @@ MIT OR Apache-2.0. No third-party icon sets are used.
 | Path | Author | Source | Licence | Notes |
 |---|---|---|---|---|
 | `assets/app-icon/` (all files: `figcraft.svg`, `figcraft-small.svg`, `figcraft-*.png`, `figcraft.ico`, `hicolor/`) | The project owner (engraving-style drawing, vectorised) | Original work, see [`assets/app-icon/README.md`](assets/app-icon/README.md); derived files rendered by `cargo xtask icon` | MIT OR Apache-2.0, [`assets/app-icon/LICENSE.txt`](assets/app-icon/LICENSE.txt) | FigCraft app icon (chameleon) |
-| `studio/web/favicon.png`, `studio/web/apple-touch-icon.png` | AI-Figma contributors (drawn in code) | Original work | MIT OR Apache-2.0 | AI-Figma browser-tab and home-screen icon: four tiles in a rounded frame |
+| `studio/web/favicon.png`, `studio/web/favicon-16.png`, `studio/web/favicon.ico` | Dewiar (project owner) | Dewiar favicon — owner's own artwork, provided by the project owner for use in these apps | provided by the project owner for use in these apps | Browser-tab icon, the same in every AI app |
+| `studio/web/apple-touch-icon.png` | Dewiar | original work made for this project (icon «mockups», 512 px resized to 180 px) | MIT OR Apache-2.0 | Home-screen icon of AI Макеты |
 | `docs/images/` (all screenshots and exports: `shot-*.png`, `art-*.png`) | FigCraft contributors | Screenshots of FigCraft showing synthetic demo documents made in FigCraft, and PNG exports of those documents by FigCraft's renderer | MIT OR Apache-2.0 | No third-party artwork |
 | `examples/*.figcraft` | FigCraft contributors | Synthetic demo documents built through FigCraft's command API; invented copy, shapes and vectors drawn from scratch, no images or embedded fonts | MIT OR Apache-2.0 | Text uses Inter (OFL, from craft-fonts or the system); no third-party artwork |
 

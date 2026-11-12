@@ -227,7 +227,7 @@ pub fn show(app: &mut FigApp, ui: &mut Ui, worker: &mut Worker) {
     }
     let painter = ui.painter_at(rect);
     let t = Tokens::get(&ctx);
-    // AI-Figma's Brand theme: a page left at its default colour shows the brand backdrop (the
+    // AI Макеты's Brand theme: a page left at its default colour shows the brand backdrop (the
     // gradient with soft glows and a faint grid) instead, and the page renders transparent over it.
     if brand_backdrop(app, &t) {
         crate::theme::paint_brand_backdrop(&painter, rect);

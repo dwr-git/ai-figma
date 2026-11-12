@@ -1,4 +1,4 @@
-# Сборка AI-Figma: готовая папка для сервера (zip).
+# Сборка AI Макеты: готовая папка для сервера (zip).
 #
 # Запускается на каждое изменение ветки main и вручную (Actions → «Сборка» → Run workflow).
 # Результат:
@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   build:
-    name: AI-Figma (браузер)
+    name: AI Макеты (браузер)
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:

@@ -10,7 +10,7 @@ const LOADING_ID: &str = "figcraft_loading";
 /// Where the page keeps the preferences (the browser's storage for this site).
 const PREFS_KEY: &str = "aifigma.prefs";
 
-/// The preferences kept in the browser, or AI-Figma's first-run ones: the Brand theme and Russian.
+/// The preferences kept in the browser, or AI Макеты's first-run ones: the Brand theme and Russian.
 fn load_prefs() -> figcraft_engine::Prefs {
     let kept = web_sys::window()
         .and_then(|w| w.local_storage().ok().flatten())
@@ -82,7 +82,7 @@ pub fn start() {
             match result {
                 Ok(()) => el.remove(),
                 Err(e) => el.set_inner_html(&format!(
-                    "<p>AI-Figma не запустился: {e:?}</p><p>Нужен браузер с WebGPU или WebGL2: свежий Chrome, Edge, Firefox или Safari.</p>"
+                    "<p>AI Макеты не запустился: {e:?}</p><p>Нужен браузер с WebGPU или WebGL2: свежий Chrome, Edge, Firefox или Safari.</p>"
                 )),
             }
         }

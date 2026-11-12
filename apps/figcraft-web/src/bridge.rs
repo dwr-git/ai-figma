@@ -1,7 +1,7 @@
 //! `window.aifigma`: the control channel for the page, as promises.
 //!
 //! The same JSON methods as the desktop control server (`crates/ui-egui/src/control.rs`), so the
-//! assistant panel next to the editor (studio/) drives AI-Figma with the commands the CLI and the
+//! assistant panel next to the editor (studio/) drives AI Макеты with the commands the CLI and the
 //! MCP server use:
 //!
 //! ```js
@@ -91,7 +91,7 @@ fn request(method: &str, params: Value) -> js_sys::Promise {
     let method = method.to_string();
     let p = js_sys::Promise::new(&mut |resolve, reject| {
         if CTX.with(|c| c.borrow().is_none()) {
-            let _ = reject.call1(&JsValue::NULL, &js_sys::Error::new("AI-Figma is not running yet"));
+            let _ = reject.call1(&JsValue::NULL, &js_sys::Error::new("AI Макеты is not running yet"));
             return;
         }
         if WAITING.with(|w| w.borrow().len()) >= MAX_WAITING {
@@ -181,7 +181,7 @@ pub fn install() -> Result<(), JsValue> {
         "wantsKeyboard",
         Closure::<dyn Fn() -> bool>::new(|| CTX.with(|c| c.borrow().as_ref().is_some_and(|ctx| ctx.text_edit_focused()))).into_js_value(),
     )?;
-    set(&obj, "product", JsValue::from_str("AI-Figma"))?;
+    set(&obj, "product", JsValue::from_str("AI Макеты"))?;
     let w = web_sys::window().ok_or("no window")?;
     js_sys::Reflect::set(&w, &"aifigma".into(), &obj)?;
     Ok(())

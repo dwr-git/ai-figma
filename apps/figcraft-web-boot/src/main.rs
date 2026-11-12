@@ -1,4 +1,4 @@
-//! Starts AI-Figma in the browser from compressed parts of its WebAssembly.
+//! Starts AI Макеты in the browser from compressed parts of its WebAssembly.
 //!
 //! Static hosts cap the size of one file (Cloudflare Pages: 25 MiB), and the app's wasm is at
 //! that size. `packaging/web/package.sh` gzips it and cuts it into parts listed in
@@ -275,12 +275,12 @@ mod boot {
                     Ok(()) => return,
                     Err(e) => e,
                 };
-                web_sys::console::error_2(&JsValue::from_str("ai-figma-boot: could not start AI-Figma:"), &error);
+                web_sys::console::error_2(&JsValue::from_str("ai-figma-boot: could not start AI Макеты:"), &error);
                 let Some(&wait) = RETRY_AFTER.get(attempt) else {
-                    say("AI-Figma не скачался с сервера. Проверьте, что папка скопирована целиком, и попробуйте ещё раз: ", true);
+                    say("AI Макеты не скачался с сервера. Проверьте, что папка скопирована целиком, и попробуйте ещё раз: ", true);
                     return;
                 };
-                say("Загрузка AI-Figma\u{2026} (скачать не вышло, пробую ещё раз)", false);
+                say("Загрузка AI Макеты\u{2026} (скачать не вышло, пробую ещё раз)", false);
                 sleep(wait).await;
                 attempt += 1;
             }
